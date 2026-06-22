@@ -5,366 +5,173 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>羽球場管理系統</title>
 <style>
-  :root {
-    --primary: #1D9E75;
-    --primary-light: #E1F5EE;
-    --primary-dark: #0F6E56;
-    --accent: #BA7517;
-    --accent-light: #FAEEDA;
-    --danger: #A32D2D;
-    --danger-light: #FCEBEB;
-    --bg: #F8FAF9;
-    --surface: #FFFFFF;
-    --border: rgba(0,0,0,0.1);
-    --text: #1a1a1a;
-    --text-muted: #5F5E5A;
-    --text-light: #888780;
-    --radius: 10px;
-    --shadow: 0 1px 3px rgba(0,0,0,0.08);
-  }
+:root {
+  --primary: #1D9E75;
+  --primary-light: #E1F5EE;
+  --primary-dark: #0F6E56;
+  --admin-color: #534AB7;
+  --admin-light: #EEEDFE;
+  --admin-dark: #3C3489;
+  --accent: #BA7517;
+  --accent-light: #FAEEDA;
+  --danger: #A32D2D;
+  --danger-light: #FCEBEB;
+  --bg: #F8FAF9;
+  --surface: #FFFFFF;
+  --border: rgba(0,0,0,0.09);
+  --text: #1a1a1a;
+  --text-muted: #5F5E5A;
+  --text-light: #888780;
+  --radius: 10px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.07);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.6; }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+/* Header */
+.header { background: var(--primary); color: white; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.header-left { display: flex; flex-direction: column; }
+.header-title { font-size: 17px; font-weight: 600; }
+.header-sub { font-size: 12px; opacity: 0.8; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.admin-badge { background: var(--admin-color); padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; letter-spacing: 0.3px; }
+.user-badge { background: rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 20px; font-size: 13px; cursor: pointer; transition: background 0.2s; }
+.user-badge:hover { background: rgba(255,255,255,0.35); }
 
-  body {
-    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 15px;
-    line-height: 1.6;
-  }
+/* Layout */
+.container { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
 
-  /* Header */
-  .header {
-    background: var(--primary);
-    color: white;
-    padding: 16px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  }
-  .header-title { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-  .header-sub { font-size: 13px; opacity: 0.85; }
-  .user-badge {
-    background: rgba(255,255,255,0.2);
-    padding: 6px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .user-badge:hover { background: rgba(255,255,255,0.3); }
+/* Tabs */
+.tabs { display: flex; gap: 4px; background: var(--surface); border-radius: var(--radius); padding: 4px; margin-bottom: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); flex-wrap: wrap; }
+.tab { flex: 1; min-width: 80px; padding: 9px 6px; border: none; background: transparent; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-muted); transition: all 0.2s; white-space: nowrap; }
+.tab.active { background: var(--primary); color: white; }
+.tab.admin-tab.active { background: var(--admin-color); color: white; }
+.tab:hover:not(.active) { background: var(--primary-light); color: var(--primary); }
+.tab.admin-tab:hover:not(.active) { background: var(--admin-light); color: var(--admin-dark); }
 
-  /* Layout */
-  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+/* Cards */
+.card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); box-shadow: var(--shadow); padding: 20px; margin-bottom: 16px; }
+.card-title { font-size: 15px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
 
-  /* Tabs */
-  .tabs {
-    display: flex;
-    gap: 4px;
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 4px;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border);
-  }
-  .tab {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    background: transparent;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-muted);
-    transition: all 0.2s;
-  }
-  .tab.active {
-    background: var(--primary);
-    color: white;
-  }
-  .tab:hover:not(.active) { background: var(--primary-light); color: var(--primary); }
+/* Grid */
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 700px) { .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); } }
 
-  /* Cards */
-  .card {
-    background: var(--surface);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    padding: 20px;
-    margin-bottom: 16px;
-  }
-  .card-title {
-    font-size: 15px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--text);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .card-title .icon { font-size: 18px; }
+/* Stat cards */
+.stat-card { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; text-align: center; }
+.stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-value { font-size: 24px; font-weight: 700; }
+.green { color: var(--primary); }
+.amber { color: var(--accent); }
+.red { color: var(--danger); }
+.purple { color: var(--admin-color); }
 
-  /* Section header */
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 16px;
-  }
-  .section-title { font-size: 16px; font-weight: 600; }
+/* Form */
+input, select { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 14px; color: var(--text); background: var(--surface); outline: none; transition: border-color 0.2s; }
+input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29,158,117,0.1); }
 
-  /* Grid */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  @media (max-width: 700px) {
-    .grid-2 { grid-template-columns: 1fr; }
-    .grid-3 { grid-template-columns: 1fr; }
-  }
+/* Buttons */
+.btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: var(--primary-light); color: var(--primary-dark); }
+.btn-secondary:hover { background: #c0e8d8; }
+.btn-admin { background: var(--admin-light); color: var(--admin-dark); }
+.btn-admin:hover { background: #d8d5f8; }
+.btn-danger { background: var(--danger-light); color: var(--danger); }
+.btn-danger:hover { background: #f5c1c1; }
+.btn-sm { padding: 5px 11px; font-size: 13px; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* Stat cards */
-  .stat-card {
-    background: var(--surface);
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    padding: 16px;
-    text-align: center;
-  }
-  .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .stat-value { font-size: 26px; font-weight: 700; }
-  .stat-value.green { color: var(--primary); }
-  .stat-value.amber { color: var(--accent); }
-  .stat-value.red { color: var(--danger); }
+/* Date row */
+.date-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 
-  /* Date picker section */
-  .date-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-  .date-row label { font-size: 14px; font-weight: 500; color: var(--text-muted); }
+/* Time slots */
+.member-row { display: flex; align-items: center; padding: 10px 12px; border-bottom: 1px solid rgba(0,0,0,0.05); gap: 10px; flex-wrap: wrap; }
+.member-row:last-child { border-bottom: none; }
+.member-name { font-weight: 500; min-width: 55px; font-size: 14px; }
+.member-slots { display: flex; gap: 7px; flex: 1; flex-wrap: wrap; }
+.slot-check { display: flex; align-items: center; gap: 5px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.15s; user-select: none; }
+.slot-check.checked { background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); font-weight: 500; }
+.slot-check.locked { cursor: not-allowed; opacity: 0.6; }
+.slot-check .cb { width: 15px; height: 15px; border: 1.5px solid #ccc; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; transition: all 0.15s; }
+.slot-check.checked .cb { background: var(--primary); border-color: var(--primary); color: white; }
 
-  /* Form inputs */
-  input, select {
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 9px 12px;
-    font-size: 14px;
-    color: var(--text);
-    background: var(--surface);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29,158,117,0.12); }
-  input[type="date"] { min-width: 160px; }
+/* Table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--bg); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+td { padding: 10px 12px; border-bottom: 1px solid rgba(0,0,0,0.04); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(29,158,117,0.03); }
 
-  /* Buttons */
-  .btn {
-    padding: 9px 18px;
-    border-radius: 8px;
-    border: none;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .btn-primary { background: var(--primary); color: white; }
-  .btn-primary:hover { background: var(--primary-dark); }
-  .btn-secondary { background: var(--primary-light); color: var(--primary-dark); }
-  .btn-secondary:hover { background: #c0e8d8; }
-  .btn-danger { background: var(--danger-light); color: var(--danger); }
-  .btn-danger:hover { background: #f5c1c1; }
-  .btn-sm { padding: 5px 12px; font-size: 13px; }
+/* Badges */
+.badge { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+.badge-green { background: var(--primary-light); color: var(--primary-dark); }
+.badge-amber { background: var(--accent-light); color: #633806; }
+.badge-red { background: var(--danger-light); color: var(--danger); }
+.badge-gray { background: #f1f0ee; color: #5F5E5A; }
+.badge-admin { background: var(--admin-light); color: var(--admin-dark); }
 
-  /* Time slots */
-  .time-slots { display: flex; gap: 10px; flex-wrap: wrap; }
-  .time-slot {
-    padding: 8px 16px;
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: all 0.2s;
-    color: var(--text-muted);
-    background: var(--surface);
-    user-select: none;
-  }
-  .time-slot.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark); }
-  .time-slot:hover:not(.selected) { border-color: var(--primary); color: var(--primary); }
+/* Fee */
+.fee-breakdown { background: var(--bg); border-radius: var(--radius); padding: 14px; margin-top: 14px; }
+.fee-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
+.fee-row.total { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px; font-weight: 600; font-size: 15px; }
 
-  /* Member table */
-  .table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th {
-    text-align: left;
-    padding: 10px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-muted);
-    background: var(--bg);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 1px solid var(--border);
-  }
-  td { padding: 11px 12px; border-bottom: 1px solid rgba(0,0,0,0.05); }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(29,158,117,0.03); }
+/* Info box */
+.info-box { background: var(--primary-light); border-left: 3px solid var(--primary); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: var(--primary-dark); margin-bottom: 14px; }
+.warn-box { background: var(--accent-light); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: #633806; margin-bottom: 14px; }
+.admin-box { background: var(--admin-light); border-left: 3px solid var(--admin-color); border-radius: 0 8px 8px 0; padding: 10px 14px; font-size: 13px; color: var(--admin-dark); margin-bottom: 14px; }
 
-  /* Badges */
-  .badge {
-    display: inline-block;
-    padding: 3px 9px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .badge-green { background: var(--primary-light); color: var(--primary-dark); }
-  .badge-amber { background: var(--accent-light); color: #633806; }
-  .badge-red { background: var(--danger-light); color: var(--danger); }
-  .badge-gray { background: #f1f1f0; color: #5F5E5A; }
+/* Login */
+#login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 999; }
+.login-card { background: var(--surface); border-radius: 16px; padding: 32px; width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); }
+.login-logo { text-align: center; font-size: 44px; margin-bottom: 8px; }
+.login-title { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.login-sub { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+.login-field { margin-bottom: 14px; }
+.login-field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: var(--text-muted); }
+.login-field select, .login-field input { width: 100%; }
 
-  /* Attendance grid */
-  .member-row {
-    display: flex;
-    align-items: center;
-    padding: 10px 12px;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .member-row:last-child { border-bottom: none; }
-  .member-name { font-weight: 500; min-width: 60px; }
-  .member-slots { display: flex; gap: 8px; flex: 1; }
-  .slot-check {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-    transition: all 0.15s;
-    user-select: none;
-  }
-  .slot-check input { display: none; }
-  .slot-check.checked { background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); font-weight: 500; }
-  .slot-check .cb {
-    width: 16px; height: 16px;
-    border: 1.5px solid var(--border);
-    border-radius: 4px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 11px;
-    transition: all 0.15s;
-    flex-shrink: 0;
-  }
-  .slot-check.checked .cb { background: var(--primary); border-color: var(--primary); color: white; }
+/* Modal */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 500; }
+.modal { background: var(--surface); border-radius: 14px; padding: 28px; width: 420px; max-width: 95vw; box-shadow: 0 8px 32px rgba(0,0,0,0.18); }
+.modal-title { font-size: 16px; font-weight: 600; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+.modal-field { margin-bottom: 14px; }
+.modal-field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: var(--text-muted); }
+.modal-field input, .modal-field select { width: 100%; }
 
-  /* Fee display */
-  .fee-breakdown {
-    background: var(--bg);
-    border-radius: var(--radius);
-    padding: 16px;
-    margin-top: 16px;
-  }
-  .fee-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; }
-  .fee-row.total { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px; font-weight: 600; font-size: 15px; }
+/* Toast */
+.toast { position: fixed; bottom: 24px; right: 24px; background: #1a1a1a; color: white; padding: 12px 20px; border-radius: 8px; font-size: 14px; z-index: 9999; opacity: 0; transform: translateY(8px); transition: all 0.3s; pointer-events: none; max-width: 280px; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { background: var(--primary-dark); }
+.toast.error { background: var(--danger); }
+.toast.info { background: var(--admin-color); }
 
-  /* Login overlay */
-  #login-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999;
-  }
-  .login-card {
-    background: var(--surface);
-    border-radius: 16px;
-    padding: 32px;
-    width: 320px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-  }
-  .login-logo { text-align: center; font-size: 40px; margin-bottom: 8px; }
-  .login-title { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-  .login-sub { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
-  .login-field { margin-bottom: 14px; }
-  .login-field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: var(--text-muted); }
-  .login-field select, .login-field input { width: 100%; }
+/* Log */
+.log-item { padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.05); font-size: 13px; }
+.log-item:last-child { border-bottom: none; }
 
-  /* Toast */
-  .toast {
-    position: fixed; bottom: 24px; right: 24px;
-    background: #1a1a1a;
-    color: white;
-    padding: 12px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    z-index: 9999;
-    opacity: 0;
-    transform: translateY(8px);
-    transition: all 0.3s;
-    pointer-events: none;
-  }
-  .toast.show { opacity: 1; transform: translateY(0); }
-  .toast.success { background: var(--primary-dark); }
-  .toast.error { background: var(--danger); }
+/* Divider */
+hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
-  /* History log */
-  .log-item {
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    font-size: 13px;
-  }
-  .log-item:last-child { border-bottom: none; }
-  .log-time { color: var(--text-light); font-size: 12px; }
-  .log-msg { margin-top: 2px; }
+/* Page */
+.page { display: none; }
+.page.active { display: block; }
+.loading { text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px; }
 
-  /* Loading */
-  .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+/* Amount input */
+.amount-edit { display: flex; align-items: center; gap: 7px; }
+.amount-input { width: 85px; }
 
-  /* Amount editable */
-  .amount-edit { display: flex; align-items: center; gap: 8px; }
-  .amount-input { width: 90px; }
+/* Section header */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-title { font-size: 15px; font-weight: 600; }
 
-  /* Divider */
-  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
-
-  /* Info box */
-  .info-box {
-    background: var(--primary-light);
-    border: 1px solid rgba(29,158,117,0.2);
-    border-radius: var(--radius);
-    padding: 12px 16px;
-    font-size: 13px;
-    color: var(--primary-dark);
-    margin-bottom: 16px;
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-  }
-
-  /* Page sections */
-  .page { display: none; }
-  .page.active { display: block; }
-
-  /* Responsive header */
-  @media (max-width: 600px) {
-    .header { flex-wrap: wrap; gap: 8px; }
-    .header-sub { display: none; }
-  }
+/* Permission lock icon */
+.lock-msg { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; padding: 10px 0; }
 </style>
 </head>
 <body>
@@ -374,92 +181,179 @@
   <div class="login-card">
     <div class="login-logo">🏸</div>
     <div class="login-title">羽球場管理系統</div>
-    <div class="login-sub">每週六 09:00 ~ 12:00</div>
+    <div class="login-sub">每週六 09:00 ~ 12:00 ｜ 550元/小時</div>
     <div class="login-field">
       <label>選擇您的姓名</label>
-      <select id="login-name">
-        <option value="">— 請選擇 —</option>
-      </select>
+      <select id="login-name"><option value="">— 請選擇 —</option></select>
     </div>
-    <button class="btn btn-primary" style="width:100%; justify-content:center; padding:11px;" onclick="doLogin()">進入系統</button>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px;" onclick="doLogin()">進入系統</button>
+    <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text-light)">管理者登入後會自動顯示管理功能</div>
   </div>
 </div>
 
 <!-- Header -->
 <div class="header">
-  <div>
+  <div class="header-left">
     <div class="header-title">🏸 羽球場管理系統</div>
     <div class="header-sub">每週六 09:00 ~ 12:00 ｜ 費用 550元/小時</div>
   </div>
-  <div class="user-badge" id="current-user-badge" onclick="logout()">登出</div>
+  <div class="header-right">
+    <span class="admin-badge" id="role-badge" style="display:none">⚙️ 管理者</span>
+    <div class="user-badge" id="current-user-badge" onclick="logout()">登出</div>
+  </div>
 </div>
 
 <!-- Main -->
 <div class="container">
-  <!-- Tabs -->
-  <div class="tabs">
+  <div class="tabs" id="main-tabs">
     <button class="tab active" onclick="switchTab('attend')">📋 本週報名</button>
-    <button class="tab" onclick="switchTab('members')">👥 會員管理</button>
+    <button class="tab" onclick="switchTab('fee')">💰 費用總覽</button>
     <button class="tab" onclick="switchTab('history')">📅 歷史記錄</button>
-    <button class="tab" onclick="switchTab('log')">🔍 修改記錄</button>
+    <!-- Admin tabs injected by JS -->
   </div>
 
-  <!-- Tab: Attendance -->
+  <!-- Tab: Attend -->
   <div id="page-attend" class="page active">
     <div class="card">
       <div class="section-header">
-        <div class="section-title">選擇日期</div>
+        <div class="section-title">選擇週六日期</div>
       </div>
       <div class="date-row">
-        <label>日期：</label>
         <input type="date" id="attend-date" />
-        <button class="btn btn-secondary" onclick="loadSaturdays()">顯示最近週六</button>
+        <button class="btn btn-secondary" onclick="jumpNextSaturday()">下週六</button>
         <button class="btn btn-primary" onclick="loadAttendance()">載入</button>
       </div>
     </div>
+    <div id="attend-content"><div class="loading">請選擇日期後載入</div></div>
+  </div>
 
-    <div id="attend-content">
-      <div class="loading">請選擇日期後載入</div>
+  <!-- Tab: Fee overview -->
+  <div id="page-fee" class="page">
+    <div id="fee-overview-content"><div class="loading">載入中...</div></div>
+  </div>
+
+  <!-- Tab: History -->
+  <div id="page-history" class="page">
+    <div class="card">
+      <div class="card-title">📅 歷史出席記錄</div>
+      <div id="history-content"><div class="loading">載入中...</div></div>
     </div>
   </div>
 
-  <!-- Tab: Members -->
+  <!-- Tab: Members (admin) -->
   <div id="page-members" class="page">
-    <div class="grid-3" id="member-stats" style="margin-bottom:16px"></div>
-
+    <div class="admin-box">⚙️ 管理者功能：修改預繳金額、查看所有成員餘額狀態</div>
+    <div class="grid-4" id="member-stats" style="margin-bottom:16px"></div>
     <div class="card">
-      <div class="card-title"><span class="icon">👥</span> 會員餘額管理</div>
+      <div class="section-header">
+        <div class="card-title" style="margin-bottom:0">👥 會員餘額管理</div>
+        <button class="btn btn-admin btn-sm" onclick="showAddMemberModal()">＋ 新增成員</button>
+      </div>
       <div class="table-wrap">
         <table>
-          <thead>
-            <tr>
-              <th>姓名</th>
-              <th>預繳金額</th>
-              <th>已使用</th>
-              <th>剩餘</th>
-              <th>狀態</th>
-              <th>操作</th>
-            </tr>
-          </thead>
+          <thead><tr><th>姓名</th><th>角色</th><th>預繳金額</th><th>已使用</th><th>剩餘</th><th>狀態</th><th>操作</th></tr></thead>
           <tbody id="members-tbody"></tbody>
         </table>
       </div>
     </div>
   </div>
 
-  <!-- Tab: History -->
-  <div id="page-history" class="page">
+  <!-- Tab: Admin Attend (admin) -->
+  <div id="page-admin-attend" class="page">
+    <div class="admin-box">⚙️ 管理者功能：可修改任何人的出席時段、刪除整筆出席記錄</div>
     <div class="card">
-      <div class="card-title"><span class="icon">📅</span> 歷史出席記錄</div>
-      <div id="history-content"><div class="loading">載入中...</div></div>
+      <div class="date-row">
+        <input type="date" id="admin-attend-date" />
+        <button class="btn btn-secondary" onclick="jumpAdminNextSaturday()">下週六</button>
+        <button class="btn btn-admin" onclick="loadAdminAttendance()">載入</button>
+      </div>
     </div>
+    <div id="admin-attend-content"><div class="loading">請選擇日期後載入</div></div>
   </div>
 
-  <!-- Tab: Log -->
+  <!-- Tab: Log (admin) -->
   <div id="page-log" class="page">
+    <div class="admin-box">⚙️ 管理者功能：所有人的操作都記錄在此</div>
     <div class="card">
-      <div class="card-title"><span class="icon">🔍</span> 操作記錄</div>
+      <div class="card-title">🔍 所有操作記錄</div>
       <div id="log-content"><div class="loading">載入中...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Edit Prepaid -->
+<div id="modal-prepaid" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-title">💰 修改預繳金額</div>
+    <div class="modal-field">
+      <label>成員姓名</label>
+      <input type="text" id="modal-member-name" readonly style="background:var(--bg);" />
+    </div>
+    <div class="modal-field">
+      <label>目前預繳</label>
+      <input type="text" id="modal-current-prepaid" readonly style="background:var(--bg);" />
+    </div>
+    <div class="modal-field">
+      <label>新預繳金額（元）</label>
+      <input type="number" id="modal-new-prepaid" min="0" step="500" placeholder="例如：5000" />
+    </div>
+    <div class="modal-field">
+      <label>備註（選填）</label>
+      <input type="text" id="modal-prepaid-note" placeholder="例如：季繳第一期" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-prepaid')">取消</button>
+      <button class="btn btn-admin" onclick="confirmUpdatePrepaid()">確認更新</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add Member -->
+<div id="modal-add-member" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-title">➕ 新增成員</div>
+    <div class="modal-field">
+      <label>姓名</label>
+      <input type="text" id="modal-new-member-name" placeholder="輸入姓名" />
+    </div>
+    <div class="modal-field">
+      <label>角色</label>
+      <select id="modal-new-member-role">
+        <option value="member">一般成員</option>
+        <option value="admin">管理者</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>預繳金額（元）</label>
+      <input type="number" id="modal-new-member-prepaid" min="0" step="500" value="0" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-member')">取消</button>
+      <button class="btn btn-admin" onclick="confirmAddMember()">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Remove Member -->
+<div id="modal-remove-member" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-title">🗑️ 移除成員確認</div>
+    <div id="modal-remove-msg" style="font-size:14px;margin-bottom:16px;color:var(--text-muted)"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-remove-member')">取消</button>
+      <button class="btn btn-danger" onclick="confirmRemoveMember()">確認移除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Delete Attendance -->
+<div id="modal-delete-attend" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-title">🗑️ 刪除出席記錄</div>
+    <div id="modal-delete-msg" style="font-size:14px;margin-bottom:16px;color:var(--text-muted)"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-delete-attend')">取消</button>
+      <button class="btn btn-danger" onclick="confirmDeleteAttendance()">確認刪除</button>
     </div>
   </div>
 </div>
@@ -467,13 +361,18 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── CONFIG ────────────────────────────────────────────────────────────────
-const API_KEY = 'AIzaSyAsEDJd0FRBThc8cumGfoUbcuA_rChIObo'; // 部署時替換
-const PROJECT_ID = 'badminton-group-43ff7';             // 部署時替換
-const DB_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+// ═══════════════════════════════════════════════════════════
+// CONFIG — 部署時請填入 Firebase 資訊
+// ═══════════════════════════════════════════════════════════
+const FIREBASE_API_KEY  = 'YOUR_API_KEY';    // 填入後啟用雲端同步
+const FIREBASE_PROJECT  = 'YOUR_PROJECT_ID'; // 填入後啟用雲端同步
+const USE_CLOUD = FIREBASE_API_KEY !== 'YOUR_API_KEY';
 
-// ─── MEMBERS ───────────────────────────────────────────────────────────────
-const MEMBERS = [
+// ═══════════════════════════════════════════════════════════
+// INITIAL DATA — 修改這裡設定成員與管理者
+// ═══════════════════════════════════════════════════════════
+const DEFAULT_ADMINS  = ['小明', '小華', '小珍', '小強']; // 4位管理者
+const DEFAULT_MEMBERS = [
   '小明','小華','小珍','小強','小芳',
   '小龍','小鳳','小豪','小雯','小傑',
   '小涵','小誠','小君','小偉','小玲'
@@ -484,529 +383,583 @@ const TIME_SLOTS = [
   { id: 'B', label: '10:00 ~ 12:00', hours: [10, 11] },
   { id: 'C', label: '09:00 ~ 12:00', hours: [9, 10, 11] },
 ];
+const RATE = 550;
 
-const RATE = 550; // 元/小時
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let currentUser  = null;
+let isAdmin      = false;
+let currentDateData    = {};
+let adminDateData      = {};
+let pendingRemoveMember = null;
+let pendingDeleteDate   = null;
+let pendingPrepaidMember = null;
 
-let currentUser = null;
-let attendanceData = {}; // { date: { memberName: slotId[] } }
-let memberBalances = {}; // { memberName: { prepaid, used } }
+// ═══════════════════════════════════════════════════════════
+// STORAGE (localStorage — swap with Firestore calls if cloud)
+// ═══════════════════════════════════════════════════════════
+function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
 
-// ─── DB HELPERS ─────────────────────────────────────────────────────────────
-async function dbGet(collection, docId) {
-  try {
-    const r = await fetch(`${DB_BASE}/${collection}/${docId}?key=${API_KEY}`);
-    if (!r.ok) return null;
-    const data = await r.json();
-    return firestoreToObj(data.fields || {});
-  } catch { return null; }
+function getMembersConfig() {
+  return lsGet('membersConfig') || DEFAULT_MEMBERS.map(n => ({
+    name: n,
+    role: DEFAULT_ADMINS.includes(n) ? 'admin' : 'member',
+    prepaid: 0,
+    used: 0
+  }));
 }
+function saveMembersConfig(cfg) { lsSet('membersConfig', cfg); }
 
-async function dbSet(collection, docId, obj) {
-  const body = { fields: objToFirestore(obj) };
-  const r = await fetch(`${DB_BASE}/${collection}/${docId}?key=${API_KEY}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
-  return r.ok;
-}
+function getMemberNames() { return getMembersConfig().map(m => m.name); }
+function getAdminNames()  { return getMembersConfig().filter(m => m.role === 'admin').map(m => m.name); }
 
-async function dbList(collection) {
-  try {
-    const r = await fetch(`${DB_BASE}/${collection}?key=${API_KEY}&pageSize=200`);
-    if (!r.ok) return [];
-    const data = await r.json();
-    return (data.documents || []).map(d => ({
-      id: d.name.split('/').pop(),
-      ...firestoreToObj(d.fields || {})
-    }));
-  } catch { return []; }
-}
+function getAttendDoc(date)        { return lsGet(`att_${date}`) || {}; }
+function saveAttendDoc(date, data) { return lsSet(`att_${date}`, data); }
+function deleteAttendDoc(date)     { localStorage.removeItem(`att_${date}`); }
 
-async function dbAdd(collection, obj) {
-  const r = await fetch(`${DB_BASE}/${collection}?key=${API_KEY}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fields: objToFirestore(obj) })
-  });
-  return r.ok;
+function getLogs() { return lsGet('logs') || []; }
+function addLog(entry) {
+  const logs = getLogs();
+  logs.unshift({ ...entry, ts: new Date().toISOString(), user: currentUser });
+  if (logs.length > 1000) logs.length = 1000;
+  lsSet('logs', logs);
 }
-
-function objToFirestore(obj) {
-  const out = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (typeof v === 'string') out[k] = { stringValue: v };
-    else if (typeof v === 'number') out[k] = { doubleValue: v };
-    else if (typeof v === 'boolean') out[k] = { booleanValue: v };
-    else if (Array.isArray(v)) out[k] = { arrayValue: { values: v.map(x => typeof x === 'string' ? { stringValue: x } : { doubleValue: x }) } };
-    else if (typeof v === 'object' && v !== null) out[k] = { mapValue: { fields: objToFirestore(v) } };
-  }
-  return out;
-}
-
-function firestoreToObj(fields) {
-  const out = {};
-  for (const [k, v] of Object.entries(fields)) {
-    if (v.stringValue !== undefined) out[k] = v.stringValue;
-    else if (v.doubleValue !== undefined) out[k] = v.doubleValue;
-    else if (v.integerValue !== undefined) out[k] = parseInt(v.integerValue);
-    else if (v.booleanValue !== undefined) out[k] = v.booleanValue;
-    else if (v.arrayValue) out[k] = (v.arrayValue.values || []).map(x => x.stringValue ?? x.doubleValue ?? x.integerValue);
-    else if (v.mapValue) out[k] = firestoreToObj(v.mapValue.fields || {});
-  }
-  return out;
-}
-
-// ─── LOCAL STORAGE FALLBACK (for demo / offline) ───────────────────────────
-function localGet(key) {
-  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
-}
-function localSet(key, val) {
-  try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch { return false; }
-}
-
-// Use localStorage as backend (works without Firebase deploy)
-async function getAttendanceDoc(dateStr) {
-  return localGet(`attendance_${dateStr}`) || {};
-}
-async function saveAttendanceDoc(dateStr, data) {
-  return localSet(`attendance_${dateStr}`, data);
-}
-async function getMemberDoc(name) {
-  const all = localGet('members') || {};
-  return all[name] || { prepaid: 0, used: 0 };
-}
-async function saveAllMembers(data) {
-  return localSet('members', data);
-}
-async function getAllMembers() {
-  const saved = localGet('members') || {};
-  const out = {};
-  for (const m of MEMBERS) {
-    out[m] = saved[m] || { prepaid: 0, used: 0 };
-  }
-  return out;
-}
-async function getLogs() {
-  return localGet('logs') || [];
-}
-async function addLog(entry) {
-  const logs = await getLogs();
-  logs.unshift(entry);
-  if (logs.length > 500) logs.length = 500;
-  localSet('logs', logs);
-}
-async function getHistoryDates() {
+function getHistoryDates() {
   const keys = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k.startsWith('attendance_')) keys.push(k.replace('attendance_', ''));
+    if (k && k.startsWith('att_')) keys.push(k.replace('att_', ''));
   }
   return keys.sort().reverse();
 }
 
-// ─── AUTH ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════
 function initLogin() {
   const sel = document.getElementById('login-name');
-  MEMBERS.forEach(m => {
+  getMemberNames().forEach(n => {
     const o = document.createElement('option');
-    o.value = m; o.textContent = m;
+    o.value = n; o.textContent = n;
     sel.appendChild(o);
   });
 }
 
 function doLogin() {
-  const sel = document.getElementById('login-name');
-  const name = sel.value;
+  const name = document.getElementById('login-name').value;
   if (!name) { showToast('請選擇姓名', 'error'); return; }
   currentUser = name;
+  isAdmin = getAdminNames().includes(name);
   document.getElementById('login-overlay').style.display = 'none';
-  document.getElementById('current-user-badge').textContent = `👤 ${name}`;
+  document.getElementById('current-user-badge').textContent = `👤 ${name}  登出`;
+  if (isAdmin) document.getElementById('role-badge').style.display = 'inline-block';
+  injectAdminTabs();
   initApp();
 }
 
 function logout() {
-  if (!confirm('確定要登出嗎？')) return;
-  currentUser = null;
-  document.getElementById('login-overlay').style.display = 'flex';
+  if (!confirm('確定要登出？')) return;
+  currentUser = null; isAdmin = false;
+  location.reload();
 }
 
-// ─── APP INIT ──────────────────────────────────────────────────────────────
+function injectAdminTabs() {
+  if (!isAdmin) return;
+  const tabs = document.getElementById('main-tabs');
+  const defs = [
+    { id: 'members',      label: '👥 會員管理' },
+    { id: 'admin-attend', label: '✏️ 編輯出席' },
+    { id: 'log',          label: '🔍 操作記錄' },
+  ];
+  defs.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'tab admin-tab';
+    btn.textContent = d.label;
+    btn.onclick = () => switchTab(d.id);
+    tabs.appendChild(btn);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// APP INIT
+// ═══════════════════════════════════════════════════════════
 function initApp() {
-  // Set default date to next Saturday
-  const today = new Date();
-  const day = today.getDay();
-  const diff = (6 - day + 7) % 7 || 7;
-  const sat = new Date(today);
-  sat.setDate(today.getDate() + diff);
-  document.getElementById('attend-date').value = formatDate(sat);
+  const sat = nextSaturday(new Date());
+  document.getElementById('attend-date').value = fmt(sat);
+  document.getElementById('admin-attend-date').value = fmt(sat);
   loadAttendance();
-  loadMembersTab();
 }
 
-function formatDate(d) {
-  return d.toISOString().split('T')[0];
+function nextSaturday(from) {
+  const d = new Date(from);
+  const diff = (6 - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + diff);
+  return d;
 }
-function displayDate(str) {
-  const d = new Date(str + 'T00:00:00');
-  const weekDay = ['日','一','二','三','四','五','六'][d.getDay()];
-  return `${str} (週${weekDay})`;
+function fmt(d) { return d.toISOString().split('T')[0]; }
+function fmtDisplay(s) {
+  const d = new Date(s + 'T00:00:00');
+  return `${s} (週${'日一二三四五六'[d.getDay()]})`;
+}
+function jumpNextSaturday() {
+  document.getElementById('attend-date').value = fmt(nextSaturday(new Date()));
+  loadAttendance();
+}
+function jumpAdminNextSaturday() {
+  document.getElementById('admin-attend-date').value = fmt(nextSaturday(new Date()));
+  loadAdminAttendance();
 }
 
-function loadSaturdays() {
-  const today = new Date();
-  const saturdays = [];
-  for (let i = -4; i <= 4; i++) {
-    const d = new Date(today);
-    const diff = (6 - today.getDay() + 7) % 7 + i * 7;
-    d.setDate(today.getDate() + diff);
-    saturdays.push(formatDate(d));
+// ═══════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════
+function switchTab(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`page-${id}`).classList.add('active');
+  const allTabs = document.querySelectorAll('.tab');
+  const map = { attend:0, fee:1, history:2 };
+  if (id in map) { allTabs[map[id]].classList.add('active'); }
+  else {
+    const adminMap = { members:0, 'admin-attend':1, log:2 };
+    const adminTabs = document.querySelectorAll('.tab.admin-tab');
+    if (id in adminMap) adminTabs[adminMap[id]]?.classList.add('active');
   }
-  // Filter to only Saturdays near today - pick next one by default
-  const nextSat = saturdays.find(s => s >= formatDate(today)) || saturdays[saturdays.length - 1];
-  document.getElementById('attend-date').value = nextSat;
-  loadAttendance();
+  if (id === 'fee')          loadFeeOverview();
+  if (id === 'history')      loadHistory();
+  if (id === 'members')      loadMembersTab();
+  if (id === 'log')          loadLog();
 }
 
-// ─── ATTENDANCE ─────────────────────────────────────────────────────────────
-let currentDateData = {}; // { memberName: slotId }
-
-async function loadAttendance() {
+// ═══════════════════════════════════════════════════════════
+// ATTENDANCE (self — member view)
+// ═══════════════════════════════════════════════════════════
+function loadAttendance() {
   const dateStr = document.getElementById('attend-date').value;
-  if (!dateStr) { showToast('請先選擇日期', 'error'); return; }
-
+  if (!dateStr) { showToast('請選擇日期', 'error'); return; }
   const d = new Date(dateStr + 'T00:00:00');
-  if (d.getDay() !== 6) {
-    showToast('請選擇週六日期', 'error');
-    return;
-  }
-
-  currentDateData = await getAttendanceDoc(dateStr) || {};
+  if (d.getDay() !== 6) { showToast('請選擇週六日期', 'error'); return; }
+  currentDateData = getAttendDoc(dateStr);
   renderAttendance(dateStr);
 }
 
 function renderAttendance(dateStr) {
+  const members = getMemberNames();
   const el = document.getElementById('attend-content');
-
-  // Compute per-hour attendance count
-  const hourCount = { 9: 0, 10: 0, 11: 0 };
-  for (const [member, slotId] of Object.entries(currentDateData)) {
-    if (!slotId) continue;
-    const slot = TIME_SLOTS.find(s => s.id === slotId);
-    if (!slot) continue;
-    slot.hours.forEach(h => hourCount[h]++);
-  }
-
-  // Compute costs
-  const fees = computeFees(currentDateData, hourCount);
-  const totalCost = fees.reduce((s, f) => s + f.fee, 0);
+  const mySlot = currentDateData[currentUser];
 
   el.innerHTML = `
     <div class="card">
-      <div class="card-title"><span class="icon">📋</span> ${displayDate(dateStr)} 出席報名</div>
-
-      <div class="info-box">
-        ℹ️ 請勾選您的時段。若某小時無人報名，費用將由全體15人均分。
+      <div class="card-title">📋 ${fmtDisplay(dateStr)}</div>
+      <div class="info-box">您只能選擇自己的出席時段。費用即時計算顯示於下方。</div>
+      <div style="margin-bottom:12px;font-size:14px;font-weight:500;">選擇您的時段（${currentUser}）：</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;" id="my-slots">
+        ${TIME_SLOTS.map(s => `
+          <div class="slot-check ${mySlot === s.id ? 'checked' : ''}" id="myslot_${s.id}" onclick="toggleMySlot('${dateStr}','${s.id}')">
+            <div class="cb">${mySlot === s.id ? '✓' : ''}</div> ${s.label}
+          </div>`).join('')}
+        <div class="slot-check ${!mySlot ? 'checked' : ''}" id="myslot_none" onclick="toggleMySlot('${dateStr}',null)">
+          <div class="cb">${!mySlot ? '✓' : ''}</div> 本週不參加
+        </div>
       </div>
-
-      <div id="member-attendance-list">
-        ${MEMBERS.map(m => renderMemberRow(m)).join('')}
-      </div>
-
-      <hr class="divider">
-      <div style="display:flex; gap:10px; justify-content:flex-end;">
-        <button class="btn btn-primary" onclick="saveAttendance('${dateStr}')">💾 儲存報名</button>
+      <div style="margin-bottom:8px;font-size:13px;color:var(--text-muted);">本週其他成員報名狀況：</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>成員</th><th>時段</th></tr></thead>
+          <tbody>
+            ${members.map(m => `<tr ${m===currentUser?'style="background:var(--primary-light)"':''}>
+              <td>${m===currentUser?'<strong>▶ '+m+'（你）</strong>':m}</td>
+              <td>${currentDateData[m] ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===currentDateData[m])?.label}</span>` : '<span class="badge badge-gray">未報名</span>'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
       </div>
     </div>
+    <div class="card" id="self-fee-card">
+      ${renderSelfFee(dateStr)}
+    </div>`;
+}
 
-    <div class="card" id="fee-card">
-      <div class="card-title"><span class="icon">💰</span> 費用計算</div>
-      ${renderFeeBreakdown(dateStr, hourCount, fees, totalCost)}
+function toggleMySlot(dateStr, slotId) {
+  if (slotId === null) {
+    delete currentDateData[currentUser];
+  } else {
+    currentDateData[currentUser] = slotId;
+  }
+  saveAttendDoc(dateStr, currentDateData);
+  addLog({ action: '修改自己出席時段', detail: `${dateStr} → ${slotId || '不參加'}` });
+  showToast('已儲存', 'success');
+  // refresh UI
+  TIME_SLOTS.forEach(s => {
+    const el = document.getElementById(`myslot_${s.id}`);
+    if (el) {
+      const checked = currentDateData[currentUser] === s.id;
+      el.classList.toggle('checked', checked);
+      el.querySelector('.cb').textContent = checked ? '✓' : '';
+    }
+  });
+  const noneEl = document.getElementById('myslot_none');
+  const noneChecked = !currentDateData[currentUser];
+  noneEl.classList.toggle('checked', noneChecked);
+  noneEl.querySelector('.cb').textContent = noneChecked ? '✓' : '';
+  document.getElementById('self-fee-card').innerHTML = renderSelfFee(dateStr);
+}
+
+function renderSelfFee(dateStr) {
+  const hourCount = computeHourCount(currentDateData, getMemberNames());
+  const fees = computeFees(currentDateData, hourCount, getMemberNames());
+  const myFee = fees.find(f => f.member === currentUser);
+  return `
+    <div class="card-title">💰 本週費用預估</div>
+    ${renderFeeTable(hourCount, fees)}
+    ${myFee ? `<div style="margin-top:14px;padding:12px 16px;background:var(--primary-light);border-radius:8px;font-size:15px;">
+      您（${currentUser}）本週預估費用：<strong style="color:var(--primary-dark);font-size:18px;">${myFee.fee} 元</strong>
+    </div>` : ''}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ADMIN ATTENDANCE EDIT
+// ═══════════════════════════════════════════════════════════
+function loadAdminAttendance() {
+  if (!isAdmin) return;
+  const dateStr = document.getElementById('admin-attend-date').value;
+  if (!dateStr) { showToast('請選擇日期', 'error'); return; }
+  const d = new Date(dateStr + 'T00:00:00');
+  if (d.getDay() !== 6) { showToast('請選擇週六日期', 'error'); return; }
+  adminDateData = getAttendDoc(dateStr);
+  renderAdminAttendance(dateStr);
+}
+
+function renderAdminAttendance(dateStr) {
+  const members = getMemberNames();
+  const el = document.getElementById('admin-attend-content');
+  const hourCount = computeHourCount(adminDateData, members);
+  const fees = computeFees(adminDateData, hourCount, members);
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="section-header">
+        <div class="card-title" style="margin-bottom:0">✏️ ${fmtDisplay(dateStr)} — 管理者編輯</div>
+        <button class="btn btn-danger btn-sm" onclick="showDeleteAttendModal('${dateStr}')">🗑️ 刪除此日記錄</button>
+      </div>
+      <div id="admin-member-list">
+        ${members.map(m => renderAdminMemberRow(m, dateStr)).join('')}
+      </div>
+      <hr>
+      <div style="display:flex;justify-content:flex-end;gap:10px;">
+        <button class="btn btn-admin" onclick="saveAdminAttendance('${dateStr}')">💾 儲存所有變更</button>
+      </div>
     </div>
-  `;
+    <div class="card" id="admin-fee-card">
+      <div class="card-title">💰 費用計算</div>
+      ${renderFeeTable(hourCount, fees)}
+    </div>`;
 
-  // Re-apply checked states
-  document.querySelectorAll('.slot-check').forEach(el => {
+  document.querySelectorAll('.admin-slot-check').forEach(el => {
     el.addEventListener('click', function() {
-      const member = this.dataset.member;
-      const slotId = this.dataset.slot;
-      // Radio behavior: uncheck others
-      document.querySelectorAll(`.slot-check[data-member="${member}"]`).forEach(s => s.classList.remove('checked'));
-      if (currentDateData[member] === slotId) {
-        delete currentDateData[member];
-      } else {
-        currentDateData[member] = slotId;
-        this.classList.add('checked');
-      }
-      // Re-check all for this member
-      document.querySelectorAll(`.slot-check[data-member="${member}"]`).forEach(s => {
-        s.classList.toggle('checked', currentDateData[member] === s.dataset.slot);
-        s.querySelector('.cb').textContent = currentDateData[member] === s.dataset.slot ? '✓' : '';
+      if (this.dataset.locked) return;
+      const m = this.dataset.member;
+      const s = this.dataset.slot;
+      adminDateData[m] = adminDateData[m] === s ? undefined : s;
+      if (!adminDateData[m]) delete adminDateData[m];
+      document.querySelectorAll(`.admin-slot-check[data-member="${m}"]`).forEach(el => {
+        const checked = adminDateData[m] === el.dataset.slot;
+        el.classList.toggle('checked', checked);
+        el.querySelector('.cb').textContent = checked ? '✓' : '';
       });
-      updateFeeDisplay(dateStr);
+      refreshAdminFee(dateStr);
     });
   });
 }
 
-function renderMemberRow(member) {
-  const selected = currentDateData[member];
+function renderAdminMemberRow(member, dateStr) {
+  const selected = adminDateData[member];
   const isMe = member === currentUser;
-
+  const cfg = getMembersConfig().find(m => m.name === member);
   return `<div class="member-row">
-    <div class="member-name" style="${isMe ? 'color:var(--primary);font-weight:700;' : ''}">${isMe ? '▶ ' : ''}${member}</div>
+    <div class="member-name" style="${isMe?'color:var(--primary)':''}">
+      ${isMe?'▶ ':''}${member}
+      ${cfg?.role==='admin'?'<span class="badge badge-admin" style="font-size:11px;padding:1px 6px">管</span>':''}
+    </div>
     <div class="member-slots">
       ${TIME_SLOTS.map(s => `
-        <div class="slot-check ${selected === s.id ? 'checked' : ''}" data-member="${member}" data-slot="${s.id}">
-          <div class="cb">${selected === s.id ? '✓' : ''}</div>
-          ${s.label}
-        </div>
-      `).join('')}
+        <div class="admin-slot-check slot-check ${selected===s.id?'checked':''}" data-member="${member}" data-slot="${s.id}">
+          <div class="cb">${selected===s.id?'✓':''}</div>${s.label}
+        </div>`).join('')}
     </div>
   </div>`;
 }
 
-function computeFees(data, hourCount) {
-  const fees = [];
-  for (const member of MEMBERS) {
+function refreshAdminFee(dateStr) {
+  const members = getMemberNames();
+  const hourCount = computeHourCount(adminDateData, members);
+  const fees = computeFees(adminDateData, hourCount, members);
+  const card = document.getElementById('admin-fee-card');
+  if (card) card.innerHTML = `<div class="card-title">💰 費用計算</div>${renderFeeTable(hourCount, fees)}`;
+}
+
+function saveAdminAttendance(dateStr) {
+  saveAttendDoc(dateStr, adminDateData);
+  addLog({ action: '管理者修改出席記錄', detail: `${dateStr} → ${JSON.stringify(adminDateData)}` });
+  showToast('已儲存', 'success');
+  renderAdminAttendance(dateStr);
+}
+
+function showDeleteAttendModal(dateStr) {
+  pendingDeleteDate = dateStr;
+  document.getElementById('modal-delete-msg').textContent = `確定要刪除 ${fmtDisplay(dateStr)} 的所有出席記錄嗎？此操作無法復原。`;
+  document.getElementById('modal-delete-attend').style.display = 'flex';
+}
+function confirmDeleteAttendance() {
+  if (!pendingDeleteDate) return;
+  deleteAttendDoc(pendingDeleteDate);
+  addLog({ action: '管理者刪除出席記錄', detail: pendingDeleteDate });
+  showToast(`${pendingDeleteDate} 記錄已刪除`, 'success');
+  closeModal('modal-delete-attend');
+  adminDateData = {};
+  document.getElementById('admin-attend-content').innerHTML = '<div class="loading">記錄已刪除，請重新選擇日期</div>';
+  pendingDeleteDate = null;
+}
+
+// ═══════════════════════════════════════════════════════════
+// FEE OVERVIEW
+// ═══════════════════════════════════════════════════════════
+function loadFeeOverview() {
+  const dateStr = document.getElementById('attend-date').value || fmt(nextSaturday(new Date()));
+  const data = getAttendDoc(dateStr);
+  const members = getMemberNames();
+  const hourCount = computeHourCount(data, members);
+  const fees = computeFees(data, hourCount, members);
+  const total = fees.reduce((s, f) => s + f.fee, 0);
+
+  document.getElementById('fee-overview-content').innerHTML = `
+    <div class="card">
+      <div class="card-title">💰 費用總覽 — ${fmtDisplay(dateStr)}</div>
+      ${renderFeeTable(hourCount, fees)}
+      <div class="fee-breakdown">
+        <div class="fee-row"><span>場地總費用（3小時）</span><span>${RATE*3} 元</span></div>
+        <div class="fee-row total"><span>系統計算分攤合計</span><span>${total} 元</span></div>
+      </div>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MEMBERS TAB (admin)
+// ═══════════════════════════════════════════════════════════
+function loadMembersTab() {
+  if (!isAdmin) return;
+  const cfg = getMembersConfig();
+  const totalPrepaid = cfg.reduce((s,m)=>s+(m.prepaid||0),0);
+  const totalUsed    = cfg.reduce((s,m)=>s+(m.used||0),0);
+  const low          = cfg.filter(m=>(m.prepaid-m.used)<500).length;
+  const admins       = cfg.filter(m=>m.role==='admin').length;
+
+  document.getElementById('member-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">總人數</div><div class="stat-value purple">${cfg.length}</div></div>
+    <div class="stat-card"><div class="stat-label">管理者</div><div class="stat-value purple">${admins}</div></div>
+    <div class="stat-card"><div class="stat-label">總預繳</div><div class="stat-value green">${totalPrepaid.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">餘額不足</div><div class="stat-value red">${low} 人</div></div>`;
+
+  document.getElementById('members-tbody').innerHTML = cfg.map(m => {
+    const bal = (m.prepaid||0) - (m.used||0);
+    const status = bal < 0 ? 'badge-red' : bal < 500 ? 'badge-amber' : 'badge-green';
+    const statusTxt = bal < 0 ? '欠費' : bal < 500 ? '即將不足' : '充足';
+    return `<tr>
+      <td><strong>${m.name}</strong></td>
+      <td>${m.role==='admin'?'<span class="badge badge-admin">管理者</span>':'<span class="badge badge-gray">一般</span>'}</td>
+      <td>${(m.prepaid||0).toLocaleString()} 元 <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">修改</button></td>
+      <td>${(m.used||0).toLocaleString()} 元</td>
+      <td><strong style="color:${bal<0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong></td>
+      <td><span class="badge ${status}">${statusTxt}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">移除</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function showPrepaidModal(name) {
+  const cfg = getMembersConfig().find(m => m.name === name);
+  pendingPrepaidMember = name;
+  document.getElementById('modal-member-name').value = name;
+  document.getElementById('modal-current-prepaid').value = (cfg?.prepaid||0) + ' 元';
+  document.getElementById('modal-new-prepaid').value = cfg?.prepaid || 0;
+  document.getElementById('modal-prepaid-note').value = '';
+  document.getElementById('modal-prepaid').style.display = 'flex';
+}
+function confirmUpdatePrepaid() {
+  const val = parseInt(document.getElementById('modal-new-prepaid').value) || 0;
+  const note = document.getElementById('modal-prepaid-note').value;
+  const cfg = getMembersConfig();
+  const m = cfg.find(x => x.name === pendingPrepaidMember);
+  if (!m) return;
+  const old = m.prepaid;
+  m.prepaid = val;
+  saveMembersConfig(cfg);
+  addLog({ action: `修改 ${pendingPrepaidMember} 預繳金額`, detail: `${old}→${val} 元${note?' 備註:'+note:''}` });
+  showToast(`${pendingPrepaidMember} 預繳已更新`, 'success');
+  closeModal('modal-prepaid');
+  loadMembersTab();
+}
+
+function showAddMemberModal() {
+  document.getElementById('modal-new-member-name').value = '';
+  document.getElementById('modal-new-member-prepaid').value = 0;
+  document.getElementById('modal-add-member').style.display = 'flex';
+}
+function confirmAddMember() {
+  const name = document.getElementById('modal-new-member-name').value.trim();
+  const role = document.getElementById('modal-new-member-role').value;
+  const prepaid = parseInt(document.getElementById('modal-new-member-prepaid').value) || 0;
+  if (!name) { showToast('請輸入姓名', 'error'); return; }
+  const cfg = getMembersConfig();
+  if (cfg.find(m => m.name === name)) { showToast('此姓名已存在', 'error'); return; }
+  cfg.push({ name, role, prepaid, used: 0 });
+  saveMembersConfig(cfg);
+  addLog({ action: '新增成員', detail: `${name} (${role==='admin'?'管理者':'一般'})` });
+  showToast(`${name} 已新增`, 'success');
+  closeModal('modal-add-member');
+  loadMembersTab();
+}
+
+function showRemoveMemberModal(name) {
+  pendingRemoveMember = name;
+  document.getElementById('modal-remove-msg').textContent = `確定要移除成員「${name}」嗎？其預繳記錄也會一併刪除。`;
+  document.getElementById('modal-remove-member').style.display = 'flex';
+}
+function confirmRemoveMember() {
+  if (!pendingRemoveMember) return;
+  const cfg = getMembersConfig().filter(m => m.name !== pendingRemoveMember);
+  saveMembersConfig(cfg);
+  addLog({ action: '移除成員', detail: pendingRemoveMember });
+  showToast(`${pendingRemoveMember} 已移除`, 'success');
+  closeModal('modal-remove-member');
+  pendingRemoveMember = null;
+  loadMembersTab();
+}
+
+// ═══════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════
+function loadHistory() {
+  const dates = getHistoryDates();
+  const el = document.getElementById('history-content');
+  if (!dates.length) { el.innerHTML = '<div class="loading">尚無歷史記錄</div>'; return; }
+  const members = getMemberNames();
+  el.innerHTML = dates.slice(0,15).map(d => {
+    const data = getAttendDoc(d);
+    const hc = computeHourCount(data, members);
+    const fees = computeFees(data, hc, members);
+    const attendees = fees.filter(f => f.slotId);
+    return `<div style="margin-bottom:16px;">
+      <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:var(--text-muted)">${fmtDisplay(d)} — 出席 ${attendees.length} 人</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>姓名</th><th>時段</th><th>費用</th></tr></thead>
+          <tbody>
+            ${fees.filter(f=>f.slotId).map(f=>`<tr ${f.member===currentUser?'style="background:var(--primary-light)"':''}>
+              <td>${f.member}</td>
+              <td>${TIME_SLOTS.find(s=>s.id===f.slotId)?.label||'-'}</td>
+              <td>${f.fee} 元</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('<hr>');
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOG (admin)
+// ═══════════════════════════════════════════════════════════
+function loadLog() {
+  if (!isAdmin) return;
+  const logs = getLogs();
+  const el = document.getElementById('log-content');
+  if (!logs.length) { el.innerHTML = '<div class="loading">尚無操作記錄</div>'; return; }
+  el.innerHTML = logs.map(l => `
+    <div class="log-item">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="badge ${getAdminNames().includes(l.user)?'badge-admin':'badge-gray'}">${l.user}</span>
+        <span style="font-weight:500;">${l.action}</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--text-light)">${new Date(l.ts).toLocaleString('zh-TW')}</span>
+      </div>
+      ${l.detail?`<div style="font-size:12px;color:var(--text-muted);margin-top:3px;padding-left:4px">${l.detail}</div>`:''}
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// FEE CALCULATION
+// ═══════════════════════════════════════════════════════════
+function computeHourCount(data, members) {
+  const hc = { 9:0, 10:0, 11:0 };
+  for (const [m, slotId] of Object.entries(data)) {
+    if (!slotId || !members.includes(m)) continue;
+    TIME_SLOTS.find(s=>s.id===slotId)?.hours.forEach(h => hc[h]++);
+  }
+  return hc;
+}
+
+function computeFees(data, hourCount, members) {
+  return members.map(member => {
     const slotId = data[member];
-    if (!slotId) {
-      fees.push({ member, slotId: null, fee: 0, breakdown: '未報名' });
-      continue;
-    }
-    const slot = TIME_SLOTS.find(s => s.id === slotId);
-    let fee = 0;
-    let breakdown = [];
+    if (!slotId) return { member, slotId:null, fee:0, breakdown:'未報名' };
+    const slot = TIME_SLOTS.find(s=>s.id===slotId);
+    let fee = 0; const bd = [];
     for (const h of slot.hours) {
-      const count = hourCount[h] || 0;
-      const divisor = count > 0 ? count : MEMBERS.length;
-      const hourFee = Math.round(RATE / divisor);
-      fee += hourFee;
-      breakdown.push(`${h}:00~${h+1}:00 ÷${divisor}人 = ${hourFee}元`);
+      const cnt = hourCount[h] || 0;
+      const div = cnt > 0 ? cnt : members.length;
+      const hfee = Math.round(RATE / div);
+      fee += hfee;
+      bd.push(`${h}~${h+1}時 ÷${div}=${hfee}元`);
     }
-
-    // Add share of empty hours
-    let emptyShare = 0;
+    // Empty hour surcharge
+    let emptyFee = 0;
     for (const [h, cnt] of Object.entries(hourCount)) {
-      if (cnt === 0) {
-        emptyShare += Math.round(RATE / MEMBERS.length);
-      }
+      if (cnt === 0) { emptyFee += Math.round(RATE / members.length); }
     }
-
-    fees.push({ member, slotId, fee: fee + emptyShare, breakdown: breakdown.join(' / '), emptyShare });
-  }
-  return fees;
+    return { member, slotId, fee: fee + emptyFee, breakdown: bd.join(' / '), emptyFee };
+  });
 }
 
-function computeHourCount(data) {
-  const hourCount = { 9: 0, 10: 0, 11: 0 };
-  for (const [member, slotId] of Object.entries(data)) {
-    if (!slotId) continue;
-    const slot = TIME_SLOTS.find(s => s.id === slotId);
-    if (!slot) continue;
-    slot.hours.forEach(h => hourCount[h]++);
-  }
-  return hourCount;
-}
-
-function renderFeeBreakdown(dateStr, hourCount, fees, totalCost) {
-  const attendees = fees.filter(f => f.slotId);
-  if (attendees.length === 0) {
-    return `<div style="color:var(--text-muted);text-align:center;padding:24px">尚無人報名</div>`;
-  }
-
-  const emptyHours = Object.entries(hourCount).filter(([h, c]) => c === 0).map(([h]) => `${h}:00`);
-
+function renderFeeTable(hourCount, fees) {
+  const emptyHours = Object.entries(hourCount).filter(([,c])=>c===0).map(([h])=>`${h}:00`);
   return `
-    <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
-      每小時人數：09:00~10:00 共 ${hourCount[9]} 人 / 10:00~11:00 共 ${hourCount[10]} 人 / 11:00~12:00 共 ${hourCount[11]} 人
-      ${emptyHours.length ? `<br><span style="color:var(--danger)">⚠️ 無人報名時段 (${emptyHours.join(', ')}) 費用由全體15人均分</span>` : ''}
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">
+      每小時出席人數：09~10 時 <strong>${hourCount[9]}</strong> 人 ／ 10~11 時 <strong>${hourCount[10]}</strong> 人 ／ 11~12 時 <strong>${hourCount[11]}</strong> 人
+      ${emptyHours.length?`<br><span style="color:var(--danger)">⚠ 無人時段(${emptyHours.join(',')})由全體均分</span>`:''}
     </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>姓名</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
         <tbody>
-          ${fees.map(f => `<tr>
-            <td style="${f.member === currentUser ? 'font-weight:700;color:var(--primary)' : ''}">${f.member === currentUser ? '▶ ' : ''}${f.member}</td>
-            <td>${f.slotId ? (TIME_SLOTS.find(s=>s.id===f.slotId)?.label || '-') : '<span class="badge badge-gray">未報名</span>'}</td>
+          ${fees.map(f=>`<tr>
+            <td>${f.member}</td>
+            <td>${f.slotId?`<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`:'<span class="badge badge-gray">未報名</span>'}</td>
             <td style="font-size:12px;color:var(--text-muted)">${f.breakdown}</td>
-            <td><strong>${f.fee > 0 ? f.fee + ' 元' : '-'}</strong></td>
+            <td><strong>${f.fee>0?f.fee+' 元':'-'}</strong></td>
           </tr>`).join('')}
         </tbody>
       </table>
-    </div>
-    <div class="fee-breakdown">
-      <div class="fee-row"><span>總場地費</span><span>${totalCost} 元</span></div>
-      <div class="fee-row total"><span>理論應收</span><span>${RATE * 3} 元 (550×3小時)</span></div>
-    </div>
-  `;
-}
-
-function updateFeeDisplay(dateStr) {
-  const hourCount = computeHourCount(currentDateData);
-  const fees = computeFees(currentDateData, hourCount);
-  const totalCost = fees.reduce((s, f) => s + f.fee, 0);
-  const feeCard = document.getElementById('fee-card');
-  if (feeCard) {
-    feeCard.querySelector(':not(.card-title)') && (feeCard.innerHTML = `
-      <div class="card-title"><span class="icon">💰</span> 費用計算</div>
-      ${renderFeeBreakdown(dateStr, hourCount, fees, totalCost)}
-    `);
-  }
-}
-
-async function saveAttendance(dateStr) {
-  await saveAttendanceDoc(dateStr, currentDateData);
-
-  // Update member used amounts
-  const allMembers = await getAllMembers();
-  const hourCount = computeHourCount(currentDateData);
-  const fees = computeFees(currentDateData, hourCount);
-
-  // Log change
-  const logEntry = {
-    ts: new Date().toISOString(),
-    user: currentUser,
-    action: `修改 ${dateStr} 出席記錄`,
-    detail: JSON.stringify(currentDateData)
-  };
-  await addLog(logEntry);
-
-  showToast('報名已儲存 ✓', 'success');
-  renderAttendance(dateStr);
-}
-
-// ─── MEMBERS TAB ─────────────────────────────────────────────────────────────
-async function loadMembersTab() {
-  const allMembers = await getAllMembers();
-
-  // Stats
-  const totalPrepaid = Object.values(allMembers).reduce((s, m) => s + (m.prepaid||0), 0);
-  const totalUsed = Object.values(allMembers).reduce((s, m) => s + (m.used||0), 0);
-  const lowBalance = Object.values(allMembers).filter(m => (m.prepaid - m.used) < 500).length;
-
-  document.getElementById('member-stats').innerHTML = `
-    <div class="stat-card"><div class="stat-label">總預繳</div><div class="stat-value green">${totalPrepaid.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="stat-label">已使用</div><div class="stat-value amber">${totalUsed.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="stat-label">餘額不足(&lt;500)</div><div class="stat-value red">${lowBalance} 人</div></div>
-  `;
-
-  document.getElementById('members-tbody').innerHTML = MEMBERS.map(m => {
-    const d = allMembers[m] || { prepaid: 0, used: 0 };
-    const balance = (d.prepaid || 0) - (d.used || 0);
-    const status = balance < 0 ? 'badge-red' : balance < 500 ? 'badge-amber' : 'badge-green';
-    const statusText = balance < 0 ? '欠費' : balance < 500 ? '即將不足' : '充足';
-    return `<tr>
-      <td><strong>${m}</strong></td>
-      <td>
-        <div class="amount-edit">
-          <input type="number" class="amount-input" value="${d.prepaid||0}" id="prepaid_${m}" min="0" step="100" />
-          <button class="btn btn-secondary btn-sm" onclick="updatePrepaid('${m}')">更新</button>
-        </div>
-      </td>
-      <td>${(d.used||0).toLocaleString()} 元</td>
-      <td><strong style="color:${balance < 0 ? 'var(--danger)' : balance < 500 ? 'var(--accent)' : 'var(--primary)'}">${balance.toLocaleString()} 元</strong></td>
-      <td><span class="badge ${status}">${statusText}</span></td>
-      <td><button class="btn btn-secondary btn-sm" onclick="viewMemberHistory('${m}')">記錄</button></td>
-    </tr>`;
-  }).join('');
-}
-
-async function updatePrepaid(member) {
-  const val = parseInt(document.getElementById(`prepaid_${member}`).value) || 0;
-  const allMembers = await getAllMembers();
-  const old = allMembers[member]?.prepaid || 0;
-  allMembers[member] = allMembers[member] || { prepaid: 0, used: 0 };
-  allMembers[member].prepaid = val;
-  await saveAllMembers(allMembers);
-  await addLog({
-    ts: new Date().toISOString(),
-    user: currentUser,
-    action: `更新 ${member} 預繳金額`,
-    detail: `${old} → ${val} 元`
-  });
-  showToast(`${member} 預繳金額已更新`, 'success');
-  loadMembersTab();
-}
-
-function viewMemberHistory(member) {
-  switchTab('history');
-  loadHistoryTab(member);
-}
-
-// ─── HISTORY TAB ─────────────────────────────────────────────────────────────
-async function loadHistoryTab(filterMember) {
-  const dates = await getHistoryDates();
-  const el = document.getElementById('history-content');
-  if (dates.length === 0) { el.innerHTML = '<div class="loading">尚無歷史記錄</div>'; return; }
-
-  let html = '';
-  for (const d of dates.slice(0, 20)) {
-    const data = await getAttendanceDoc(d);
-    const hourCount = computeHourCount(data);
-    const fees = computeFees(data, hourCount);
-    const attendees = fees.filter(f => f.slotId);
-    if (filterMember && !data[filterMember]) continue;
-
-    html += `<div class="card" style="margin-bottom:12px">
-      <div class="card-title"><span class="icon">📅</span> ${displayDate(d)}</div>
-      <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">出席 ${attendees.length} / 15 人</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>姓名</th><th>時段</th><th>費用</th></tr></thead>
-          <tbody>
-            ${fees.filter(f => f.slotId || filterMember === f.member).map(f => `
-              <tr ${filterMember === f.member ? 'style="background:var(--primary-light)"' : ''}>
-                <td>${f.member}</td>
-                <td>${f.slotId ? TIME_SLOTS.find(s=>s.id===f.slotId)?.label : '-'}</td>
-                <td>${f.fee > 0 ? f.fee + ' 元' : '-'}</td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
     </div>`;
-  }
-  el.innerHTML = html || '<div class="loading">無符合記錄</div>';
 }
 
-// ─── LOG TAB ─────────────────────────────────────────────────────────────────
-async function loadLogTab() {
-  const logs = await getLogs();
-  const el = document.getElementById('log-content');
-  if (logs.length === 0) { el.innerHTML = '<div class="loading">尚無操作記錄</div>'; return; }
-  el.innerHTML = logs.map(l => `
-    <div class="log-item">
-      <div style="display:flex;gap:10px;align-items:center">
-        <span class="badge badge-gray">${l.user}</span>
-        <span style="font-weight:500">${l.action}</span>
-        <span class="log-time" style="margin-left:auto">${new Date(l.ts).toLocaleString('zh-TW')}</span>
-      </div>
-      ${l.detail ? `<div class="log-msg" style="color:var(--text-muted)">${l.detail}</div>` : ''}
-    </div>
-  `).join('');
-}
+// ═══════════════════════════════════════════════════════════
+// MODALS & TOAST
+// ═══════════════════════════════════════════════════════════
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
 
-// ─── TABS ───────────────────────────────────────────────────────────────────
-function switchTab(tab) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(`page-${tab}`).classList.add('active');
-  const tabs = { attend: 0, members: 1, history: 2, log: 3 };
-  document.querySelectorAll('.tab')[tabs[tab]]?.classList.add('active');
-
-  if (tab === 'members') loadMembersTab();
-  if (tab === 'history') loadHistoryTab(null);
-  if (tab === 'log') loadLogTab();
-}
-
-// ─── TOAST ─────────────────────────────────────────────────────────────────
-function showToast(msg, type = '') {
+function showToast(msg, type='') {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = `toast ${type} show`;
-  setTimeout(() => t.classList.remove('show'), 3000);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 3000);
 }
 
-// ─── INIT ───────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════
 initLogin();
 </script>
 </body>
