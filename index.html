@@ -901,41 +901,24 @@ function computeHourCount(data, members) {
 }
 
 function computeFees(data, hourCount, members) {
-  // 先計算所有空時段的均分費（全體都要付）
-  const emptyShareList = [];
-  for (const [h, cnt] of Object.entries(hourCount)) {
-    if (cnt === 0) {
-      const share = Math.round(RATE / members.length);
-      emptyShareList.push({ h: parseInt(h), share });
-    }
-  }
-  const totalEmptyFee = emptyShareList.reduce((s, x) => s + x.share, 0);
-
   return members.map(member => {
     const slotId = data[member];
-    const bd = [];
-
-    // 空時段均分（所有人都要付）
-    emptyShareList.forEach(({ h, share }) => {
-      bd.push(`${h}~${h+1}時無人均分÷${members.length}=${share}元`);
-    });
-
-    if (!slotId) {
-      // 未報名：只付空時段均分（若有的話）
-      if (totalEmptyFee === 0) return { member, slotId: null, fee: 0, breakdown: '未報名' };
-      return { member, slotId: null, fee: totalEmptyFee, breakdown: bd.join(' / ') };
-    }
-
-    const slot = TIME_SLOTS.find(s => s.id === slotId);
-    let fee = 0;
+    if (!slotId) return { member, slotId:null, fee:0, breakdown:'未報名' };
+    const slot = TIME_SLOTS.find(s=>s.id===slotId);
+    let fee = 0; const bd = [];
     for (const h of slot.hours) {
       const cnt = hourCount[h] || 0;
       const div = cnt > 0 ? cnt : members.length;
-      const hfee = Math.round(RATE / div);
+      const hfee = Math.ceil(RATE / div);
       fee += hfee;
-      bd.push(`${h}~${h+1}時÷${div}=${hfee}元`);
+      bd.push(`${h}~${h+1}時 ÷${div}=${hfee}元`);
     }
-    return { member, slotId, fee: fee + totalEmptyFee, breakdown: bd.join(' / '), emptyFee: totalEmptyFee };
+    // Empty hour surcharge
+    let emptyFee = 0;
+    for (const [h, cnt] of Object.entries(hourCount)) {
+      if (cnt === 0) { emptyFee += Math.ceil(RATE / members.length); }
+    }
+    return { member, slotId, fee: fee + emptyFee, breakdown: bd.join(' / '), emptyFee };
   });
 }
 
