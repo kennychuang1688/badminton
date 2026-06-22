@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>羽球場管理系統</title>
+<style>
+  :root {
+    --primary: #1D9E75;
+    --primary-light: #E1F5EE;
+    --primary-dark: #0F6E56;
+    --accent: #BA7517;
+    --accent-light: #FAEEDA;
+    --danger: #A32D2D;
+    --danger-light: #FCEBEB;
+    --bg: #F8FAF9;
+    --surface: #FFFFFF;
+    --border: rgba(0,0,0,0.1);
+    --text: #1a1a1a;
+    --text-muted: #5F5E5A;
+    --text-light: #888780;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* Header */
+  .header {
+    background: var(--primary);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .header-title { font-size: 18px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  .header-sub { font-size: 13px; opacity: 0.85; }
+  .user-badge {
+    background: rgba(255,255,255,0.2);
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .user-badge:hover { background: rgba(255,255,255,0.3); }
+
+  /* Layout */
+  .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 4px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+  .tab.active {
+    background: var(--primary);
+    color: white;
+  }
+  .tab:hover:not(.active) { background: var(--primary-light); color: var(--primary); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .icon { font-size: 18px; }
+
+  /* Section header */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-title { font-size: 16px; font-weight: 600; }
+
+  /* Grid */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 700px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  /* Stat cards */
+  .stat-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    padding: 16px;
+    text-align: center;
+  }
+  .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-value { font-size: 26px; font-weight: 700; }
+  .stat-value.green { color: var(--primary); }
+  .stat-value.amber { color: var(--accent); }
+  .stat-value.red { color: var(--danger); }
+
+  /* Date picker section */
+  .date-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .date-row label { font-size: 14px; font-weight: 500; color: var(--text-muted); }
+
+  /* Form inputs */
+  input, select {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29,158,117,0.12); }
+  input[type="date"] { min-width: 160px; }
+
+  /* Buttons */
+  .btn {
+    padding: 9px 18px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-secondary { background: var(--primary-light); color: var(--primary-dark); }
+  .btn-secondary:hover { background: #c0e8d8; }
+  .btn-danger { background: var(--danger-light); color: var(--danger); }
+  .btn-danger:hover { background: #f5c1c1; }
+  .btn-sm { padding: 5px 12px; font-size: 13px; }
+
+  /* Time slots */
+  .time-slots { display: flex; gap: 10px; flex-wrap: wrap; }
+  .time-slot {
+    padding: 8px 16px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+    color: var(--text-muted);
+    background: var(--surface);
+    user-select: none;
+  }
+  .time-slot.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark); }
+  .time-slot:hover:not(.selected) { border-color: var(--primary); color: var(--primary); }
+
+  /* Member table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+  }
+  td { padding: 11px 12px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(29,158,117,0.03); }
+
+  /* Badges */
+  .badge {
+    display: inline-block;
+    padding: 3px 9px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .badge-green { background: var(--primary-light); color: var(--primary-dark); }
+  .badge-amber { background: var(--accent-light); color: #633806; }
+  .badge-red { background: var(--danger-light); color: var(--danger); }
+  .badge-gray { background: #f1f1f0; color: #5F5E5A; }
+
+  /* Attendance grid */
+  .member-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .member-row:last-child { border-bottom: none; }
+  .member-name { font-weight: 500; min-width: 60px; }
+  .member-slots { display: flex; gap: 8px; flex: 1; }
+  .slot-check {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .slot-check input { display: none; }
+  .slot-check.checked { background: var(--primary-light); border-color: var(--primary); color: var(--primary-dark); font-weight: 500; }
+  .slot-check .cb {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .slot-check.checked .cb { background: var(--primary); border-color: var(--primary); color: white; }
+
+  /* Fee display */
+  .fee-breakdown {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-top: 16px;
+  }
+  .fee-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; }
+  .fee-row.total { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 5px; font-weight: 600; font-size: 15px; }
+
+  /* Login overlay */
+  #login-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+  .login-card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 32px;
+    width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  .login-logo { text-align: center; font-size: 40px; margin-bottom: 8px; }
+  .login-title { text-align: center; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .login-sub { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+  .login-field { margin-bottom: 14px; }
+  .login-field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: var(--text-muted); }
+  .login-field select, .login-field input { width: 100%; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #1a1a1a;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 9999;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: var(--primary-dark); }
+  .toast.error { background: var(--danger); }
+
+  /* History log */
+  .log-item {
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    font-size: 13px;
+  }
+  .log-item:last-child { border-bottom: none; }
+  .log-time { color: var(--text-light); font-size: 12px; }
+  .log-msg { margin-top: 2px; }
+
+  /* Loading */
+  .loading { text-align: center; padding: 40px; color: var(--text-muted); }
+
+  /* Amount editable */
+  .amount-edit { display: flex; align-items: center; gap: 8px; }
+  .amount-input { width: 90px; }
+
+  /* Divider */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* Info box */
+  .info-box {
+    background: var(--primary-light);
+    border: 1px solid rgba(29,158,117,0.2);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--primary-dark);
+    margin-bottom: 16px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  /* Page sections */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Responsive header */
+  @media (max-width: 600px) {
+    .header { flex-wrap: wrap; gap: 8px; }
+    .header-sub { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-overlay">
+  <div class="login-card">
+    <div class="login-logo">🏸</div>
+    <div class="login-title">羽球場管理系統</div>
+    <div class="login-sub">每週六 09:00 ~ 12:00</div>
+    <div class="login-field">
+      <label>選擇您的姓名</label>
+      <select id="login-name">
+        <option value="">— 請選擇 —</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" style="width:100%; justify-content:center; padding:11px;" onclick="doLogin()">進入系統</button>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div>
+    <div class="header-title">🏸 羽球場管理系統</div>
+    <div class="header-sub">每週六 09:00 ~ 12:00 ｜ 費用 550元/小時</div>
+  </div>
+  <div class="user-badge" id="current-user-badge" onclick="logout()">登出</div>
+</div>
+
+<!-- Main -->
+<div class="container">
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('attend')">📋 本週報名</button>
+    <button class="tab" onclick="switchTab('members')">👥 會員管理</button>
+    <button class="tab" onclick="switchTab('history')">📅 歷史記錄</button>
+    <button class="tab" onclick="switchTab('log')">🔍 修改記錄</button>
+  </div>
+
+  <!-- Tab: Attendance -->
+  <div id="page-attend" class="page active">
+    <div class="card">
+      <div class="section-header">
+        <div class="section-title">選擇日期</div>
+      </div>
+      <div class="date-row">
+        <label>日期：</label>
+        <input type="date" id="attend-date" />
+        <button class="btn btn-secondary" onclick="loadSaturdays()">顯示最近週六</button>
+        <button class="btn btn-primary" onclick="loadAttendance()">載入</button>
+      </div>
+    </div>
+
+    <div id="attend-content">
+      <div class="loading">請選擇日期後載入</div>
+    </div>
+  </div>
+
+  <!-- Tab: Members -->
+  <div id="page-members" class="page">
+    <div class="grid-3" id="member-stats" style="margin-bottom:16px"></div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">👥</span> 會員餘額管理</div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>預繳金額</th>
+              <th>已使用</th>
+              <th>剩餘</th>
+              <th>狀態</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody id="members-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: History -->
+  <div id="page-history" class="page">
+    <div class="card">
+      <div class="card-title"><span class="icon">📅</span> 歷史出席記錄</div>
+      <div id="history-content"><div class="loading">載入中...</div></div>
+    </div>
+  </div>
+
+  <!-- Tab: Log -->
+  <div id="page-log" class="page">
+    <div class="card">
+      <div class="card-title"><span class="icon">🔍</span> 操作記錄</div>
+      <div id="log-content"><div class="loading">載入中...</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────────────
+const API_KEY = 'AIzaSyAsEDJd0FRBThc8cumGfoUbcuA_rChIObo'; // 部署時替換
+const PROJECT_ID = 'badminton-group-43ff7';             // 部署時替換
+const DB_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+// ─── MEMBERS ───────────────────────────────────────────────────────────────
+const MEMBERS = [
+  '小明','小華','小珍','小強','小芳',
+  '小龍','小鳳','小豪','小雯','小傑',
+  '小涵','小誠','小君','小偉','小玲'
+];
+
+const TIME_SLOTS = [
+  { id: 'A', label: '09:00 ~ 11:00', hours: [9, 10] },
+  { id: 'B', label: '10:00 ~ 12:00', hours: [10, 11] },
+  { id: 'C', label: '09:00 ~ 12:00', hours: [9, 10, 11] },
+];
+
+const RATE = 550; // 元/小時
+
+let currentUser = null;
+let attendanceData = {}; // { date: { memberName: slotId[] } }
+let memberBalances = {}; // { memberName: { prepaid, used } }
+
+// ─── DB HELPERS ─────────────────────────────────────────────────────────────
+async function dbGet(collection, docId) {
+  try {
+    const r = await fetch(`${DB_BASE}/${collection}/${docId}?key=${API_KEY}`);
+    if (!r.ok) return null;
+    const data = await r.json();
+    return firestoreToObj(data.fields || {});
+  } catch { return null; }
+}
+
+async function dbSet(collection, docId, obj) {
+  const body = { fields: objToFirestore(obj) };
+  const r = await fetch(`${DB_BASE}/${collection}/${docId}?key=${API_KEY}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return r.ok;
+}
+
+async function dbList(collection) {
+  try {
+    const r = await fetch(`${DB_BASE}/${collection}?key=${API_KEY}&pageSize=200`);
+    if (!r.ok) return [];
+    const data = await r.json();
+    return (data.documents || []).map(d => ({
+      id: d.name.split('/').pop(),
+      ...firestoreToObj(d.fields || {})
+    }));
+  } catch { return []; }
+}
+
+async function dbAdd(collection, obj) {
+  const r = await fetch(`${DB_BASE}/${collection}?key=${API_KEY}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: objToFirestore(obj) })
+  });
+  return r.ok;
+}
+
+function objToFirestore(obj) {
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (typeof v === 'string') out[k] = { stringValue: v };
+    else if (typeof v === 'number') out[k] = { doubleValue: v };
+    else if (typeof v === 'boolean') out[k] = { booleanValue: v };
+    else if (Array.isArray(v)) out[k] = { arrayValue: { values: v.map(x => typeof x === 'string' ? { stringValue: x } : { doubleValue: x }) } };
+    else if (typeof v === 'object' && v !== null) out[k] = { mapValue: { fields: objToFirestore(v) } };
+  }
+  return out;
+}
+
+function firestoreToObj(fields) {
+  const out = {};
+  for (const [k, v] of Object.entries(fields)) {
+    if (v.stringValue !== undefined) out[k] = v.stringValue;
+    else if (v.doubleValue !== undefined) out[k] = v.doubleValue;
+    else if (v.integerValue !== undefined) out[k] = parseInt(v.integerValue);
+    else if (v.booleanValue !== undefined) out[k] = v.booleanValue;
+    else if (v.arrayValue) out[k] = (v.arrayValue.values || []).map(x => x.stringValue ?? x.doubleValue ?? x.integerValue);
+    else if (v.mapValue) out[k] = firestoreToObj(v.mapValue.fields || {});
+  }
+  return out;
+}
+
+// ─── LOCAL STORAGE FALLBACK (for demo / offline) ───────────────────────────
+function localGet(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+function localSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch { return false; }
+}
+
+// Use localStorage as backend (works without Firebase deploy)
+async function getAttendanceDoc(dateStr) {
+  return localGet(`attendance_${dateStr}`) || {};
+}
+async function saveAttendanceDoc(dateStr, data) {
+  return localSet(`attendance_${dateStr}`, data);
+}
+async function getMemberDoc(name) {
+  const all = localGet('members') || {};
+  return all[name] || { prepaid: 0, used: 0 };
+}
+async function saveAllMembers(data) {
+  return localSet('members', data);
+}
+async function getAllMembers() {
+  const saved = localGet('members') || {};
+  const out = {};
+  for (const m of MEMBERS) {
+    out[m] = saved[m] || { prepaid: 0, used: 0 };
+  }
+  return out;
+}
+async function getLogs() {
+  return localGet('logs') || [];
+}
+async function addLog(entry) {
+  const logs = await getLogs();
+  logs.unshift(entry);
+  if (logs.length > 500) logs.length = 500;
+  localSet('logs', logs);
+}
+async function getHistoryDates() {
+  const keys = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k.startsWith('attendance_')) keys.push(k.replace('attendance_', ''));
+  }
+  return keys.sort().reverse();
+}
+
+// ─── AUTH ──────────────────────────────────────────────────────────────────
+function initLogin() {
+  const sel = document.getElementById('login-name');
+  MEMBERS.forEach(m => {
+    const o = document.createElement('option');
+    o.value = m; o.textContent = m;
+    sel.appendChild(o);
+  });
+}
+
+function doLogin() {
+  const sel = document.getElementById('login-name');
+  const name = sel.value;
+  if (!name) { showToast('請選擇姓名', 'error'); return; }
+  currentUser = name;
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('current-user-badge').textContent = `👤 ${name}`;
+  initApp();
+}
+
+function logout() {
+  if (!confirm('確定要登出嗎？')) return;
+  currentUser = null;
+  document.getElementById('login-overlay').style.display = 'flex';
+}
+
+// ─── APP INIT ──────────────────────────────────────────────────────────────
+function initApp() {
+  // Set default date to next Saturday
+  const today = new Date();
+  const day = today.getDay();
+  const diff = (6 - day + 7) % 7 || 7;
+  const sat = new Date(today);
+  sat.setDate(today.getDate() + diff);
+  document.getElementById('attend-date').value = formatDate(sat);
+  loadAttendance();
+  loadMembersTab();
+}
+
+function formatDate(d) {
+  return d.toISOString().split('T')[0];
+}
+function displayDate(str) {
+  const d = new Date(str + 'T00:00:00');
+  const weekDay = ['日','一','二','三','四','五','六'][d.getDay()];
+  return `${str} (週${weekDay})`;
+}
+
+function loadSaturdays() {
+  const today = new Date();
+  const saturdays = [];
+  for (let i = -4; i <= 4; i++) {
+    const d = new Date(today);
+    const diff = (6 - today.getDay() + 7) % 7 + i * 7;
+    d.setDate(today.getDate() + diff);
+    saturdays.push(formatDate(d));
+  }
+  // Filter to only Saturdays near today - pick next one by default
+  const nextSat = saturdays.find(s => s >= formatDate(today)) || saturdays[saturdays.length - 1];
+  document.getElementById('attend-date').value = nextSat;
+  loadAttendance();
+}
+
+// ─── ATTENDANCE ─────────────────────────────────────────────────────────────
+let currentDateData = {}; // { memberName: slotId }
+
+async function loadAttendance() {
+  const dateStr = document.getElementById('attend-date').value;
+  if (!dateStr) { showToast('請先選擇日期', 'error'); return; }
+
+  const d = new Date(dateStr + 'T00:00:00');
+  if (d.getDay() !== 6) {
+    showToast('請選擇週六日期', 'error');
+    return;
+  }
+
+  currentDateData = await getAttendanceDoc(dateStr) || {};
+  renderAttendance(dateStr);
+}
+
+function renderAttendance(dateStr) {
+  const el = document.getElementById('attend-content');
+
+  // Compute per-hour attendance count
+  const hourCount = { 9: 0, 10: 0, 11: 0 };
+  for (const [member, slotId] of Object.entries(currentDateData)) {
+    if (!slotId) continue;
+    const slot = TIME_SLOTS.find(s => s.id === slotId);
+    if (!slot) continue;
+    slot.hours.forEach(h => hourCount[h]++);
+  }
+
+  // Compute costs
+  const fees = computeFees(currentDateData, hourCount);
+  const totalCost = fees.reduce((s, f) => s + f.fee, 0);
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title"><span class="icon">📋</span> ${displayDate(dateStr)} 出席報名</div>
+
+      <div class="info-box">
+        ℹ️ 請勾選您的時段。若某小時無人報名，費用將由全體15人均分。
+      </div>
+
+      <div id="member-attendance-list">
+        ${MEMBERS.map(m => renderMemberRow(m)).join('')}
+      </div>
+
+      <hr class="divider">
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button class="btn btn-primary" onclick="saveAttendance('${dateStr}')">💾 儲存報名</button>
+      </div>
+    </div>
+
+    <div class="card" id="fee-card">
+      <div class="card-title"><span class="icon">💰</span> 費用計算</div>
+      ${renderFeeBreakdown(dateStr, hourCount, fees, totalCost)}
+    </div>
+  `;
+
+  // Re-apply checked states
+  document.querySelectorAll('.slot-check').forEach(el => {
+    el.addEventListener('click', function() {
+      const member = this.dataset.member;
+      const slotId = this.dataset.slot;
+      // Radio behavior: uncheck others
+      document.querySelectorAll(`.slot-check[data-member="${member}"]`).forEach(s => s.classList.remove('checked'));
+      if (currentDateData[member] === slotId) {
+        delete currentDateData[member];
+      } else {
+        currentDateData[member] = slotId;
+        this.classList.add('checked');
+      }
+      // Re-check all for this member
+      document.querySelectorAll(`.slot-check[data-member="${member}"]`).forEach(s => {
+        s.classList.toggle('checked', currentDateData[member] === s.dataset.slot);
+        s.querySelector('.cb').textContent = currentDateData[member] === s.dataset.slot ? '✓' : '';
+      });
+      updateFeeDisplay(dateStr);
+    });
+  });
+}
+
+function renderMemberRow(member) {
+  const selected = currentDateData[member];
+  const isMe = member === currentUser;
+
+  return `<div class="member-row">
+    <div class="member-name" style="${isMe ? 'color:var(--primary);font-weight:700;' : ''}">${isMe ? '▶ ' : ''}${member}</div>
+    <div class="member-slots">
+      ${TIME_SLOTS.map(s => `
+        <div class="slot-check ${selected === s.id ? 'checked' : ''}" data-member="${member}" data-slot="${s.id}">
+          <div class="cb">${selected === s.id ? '✓' : ''}</div>
+          ${s.label}
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
+function computeFees(data, hourCount) {
+  const fees = [];
+  for (const member of MEMBERS) {
+    const slotId = data[member];
+    if (!slotId) {
+      fees.push({ member, slotId: null, fee: 0, breakdown: '未報名' });
+      continue;
+    }
+    const slot = TIME_SLOTS.find(s => s.id === slotId);
+    let fee = 0;
+    let breakdown = [];
+    for (const h of slot.hours) {
+      const count = hourCount[h] || 0;
+      const divisor = count > 0 ? count : MEMBERS.length;
+      const hourFee = Math.round(RATE / divisor);
+      fee += hourFee;
+      breakdown.push(`${h}:00~${h+1}:00 ÷${divisor}人 = ${hourFee}元`);
+    }
+
+    // Add share of empty hours
+    let emptyShare = 0;
+    for (const [h, cnt] of Object.entries(hourCount)) {
+      if (cnt === 0) {
+        emptyShare += Math.round(RATE / MEMBERS.length);
+      }
+    }
+
+    fees.push({ member, slotId, fee: fee + emptyShare, breakdown: breakdown.join(' / '), emptyShare });
+  }
+  return fees;
+}
+
+function computeHourCount(data) {
+  const hourCount = { 9: 0, 10: 0, 11: 0 };
+  for (const [member, slotId] of Object.entries(data)) {
+    if (!slotId) continue;
+    const slot = TIME_SLOTS.find(s => s.id === slotId);
+    if (!slot) continue;
+    slot.hours.forEach(h => hourCount[h]++);
+  }
+  return hourCount;
+}
+
+function renderFeeBreakdown(dateStr, hourCount, fees, totalCost) {
+  const attendees = fees.filter(f => f.slotId);
+  if (attendees.length === 0) {
+    return `<div style="color:var(--text-muted);text-align:center;padding:24px">尚無人報名</div>`;
+  }
+
+  const emptyHours = Object.entries(hourCount).filter(([h, c]) => c === 0).map(([h]) => `${h}:00`);
+
+  return `
+    <div style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+      每小時人數：09:00~10:00 共 ${hourCount[9]} 人 / 10:00~11:00 共 ${hourCount[10]} 人 / 11:00~12:00 共 ${hourCount[11]} 人
+      ${emptyHours.length ? `<br><span style="color:var(--danger)">⚠️ 無人報名時段 (${emptyHours.join(', ')}) 費用由全體15人均分</span>` : ''}
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>姓名</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
+        <tbody>
+          ${fees.map(f => `<tr>
+            <td style="${f.member === currentUser ? 'font-weight:700;color:var(--primary)' : ''}">${f.member === currentUser ? '▶ ' : ''}${f.member}</td>
+            <td>${f.slotId ? (TIME_SLOTS.find(s=>s.id===f.slotId)?.label || '-') : '<span class="badge badge-gray">未報名</span>'}</td>
+            <td style="font-size:12px;color:var(--text-muted)">${f.breakdown}</td>
+            <td><strong>${f.fee > 0 ? f.fee + ' 元' : '-'}</strong></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="fee-breakdown">
+      <div class="fee-row"><span>總場地費</span><span>${totalCost} 元</span></div>
+      <div class="fee-row total"><span>理論應收</span><span>${RATE * 3} 元 (550×3小時)</span></div>
+    </div>
+  `;
+}
+
+function updateFeeDisplay(dateStr) {
+  const hourCount = computeHourCount(currentDateData);
+  const fees = computeFees(currentDateData, hourCount);
+  const totalCost = fees.reduce((s, f) => s + f.fee, 0);
+  const feeCard = document.getElementById('fee-card');
+  if (feeCard) {
+    feeCard.querySelector(':not(.card-title)') && (feeCard.innerHTML = `
+      <div class="card-title"><span class="icon">💰</span> 費用計算</div>
+      ${renderFeeBreakdown(dateStr, hourCount, fees, totalCost)}
+    `);
+  }
+}
+
+async function saveAttendance(dateStr) {
+  await saveAttendanceDoc(dateStr, currentDateData);
+
+  // Update member used amounts
+  const allMembers = await getAllMembers();
+  const hourCount = computeHourCount(currentDateData);
+  const fees = computeFees(currentDateData, hourCount);
+
+  // Log change
+  const logEntry = {
+    ts: new Date().toISOString(),
+    user: currentUser,
+    action: `修改 ${dateStr} 出席記錄`,
+    detail: JSON.stringify(currentDateData)
+  };
+  await addLog(logEntry);
+
+  showToast('報名已儲存 ✓', 'success');
+  renderAttendance(dateStr);
+}
+
+// ─── MEMBERS TAB ─────────────────────────────────────────────────────────────
+async function loadMembersTab() {
+  const allMembers = await getAllMembers();
+
+  // Stats
+  const totalPrepaid = Object.values(allMembers).reduce((s, m) => s + (m.prepaid||0), 0);
+  const totalUsed = Object.values(allMembers).reduce((s, m) => s + (m.used||0), 0);
+  const lowBalance = Object.values(allMembers).filter(m => (m.prepaid - m.used) < 500).length;
+
+  document.getElementById('member-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-label">總預繳</div><div class="stat-value green">${totalPrepaid.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">已使用</div><div class="stat-value amber">${totalUsed.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">餘額不足(&lt;500)</div><div class="stat-value red">${lowBalance} 人</div></div>
+  `;
+
+  document.getElementById('members-tbody').innerHTML = MEMBERS.map(m => {
+    const d = allMembers[m] || { prepaid: 0, used: 0 };
+    const balance = (d.prepaid || 0) - (d.used || 0);
+    const status = balance < 0 ? 'badge-red' : balance < 500 ? 'badge-amber' : 'badge-green';
+    const statusText = balance < 0 ? '欠費' : balance < 500 ? '即將不足' : '充足';
+    return `<tr>
+      <td><strong>${m}</strong></td>
+      <td>
+        <div class="amount-edit">
+          <input type="number" class="amount-input" value="${d.prepaid||0}" id="prepaid_${m}" min="0" step="100" />
+          <button class="btn btn-secondary btn-sm" onclick="updatePrepaid('${m}')">更新</button>
+        </div>
+      </td>
+      <td>${(d.used||0).toLocaleString()} 元</td>
+      <td><strong style="color:${balance < 0 ? 'var(--danger)' : balance < 500 ? 'var(--accent)' : 'var(--primary)'}">${balance.toLocaleString()} 元</strong></td>
+      <td><span class="badge ${status}">${statusText}</span></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="viewMemberHistory('${m}')">記錄</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function updatePrepaid(member) {
+  const val = parseInt(document.getElementById(`prepaid_${member}`).value) || 0;
+  const allMembers = await getAllMembers();
+  const old = allMembers[member]?.prepaid || 0;
+  allMembers[member] = allMembers[member] || { prepaid: 0, used: 0 };
+  allMembers[member].prepaid = val;
+  await saveAllMembers(allMembers);
+  await addLog({
+    ts: new Date().toISOString(),
+    user: currentUser,
+    action: `更新 ${member} 預繳金額`,
+    detail: `${old} → ${val} 元`
+  });
+  showToast(`${member} 預繳金額已更新`, 'success');
+  loadMembersTab();
+}
+
+function viewMemberHistory(member) {
+  switchTab('history');
+  loadHistoryTab(member);
+}
+
+// ─── HISTORY TAB ─────────────────────────────────────────────────────────────
+async function loadHistoryTab(filterMember) {
+  const dates = await getHistoryDates();
+  const el = document.getElementById('history-content');
+  if (dates.length === 0) { el.innerHTML = '<div class="loading">尚無歷史記錄</div>'; return; }
+
+  let html = '';
+  for (const d of dates.slice(0, 20)) {
+    const data = await getAttendanceDoc(d);
+    const hourCount = computeHourCount(data);
+    const fees = computeFees(data, hourCount);
+    const attendees = fees.filter(f => f.slotId);
+    if (filterMember && !data[filterMember]) continue;
+
+    html += `<div class="card" style="margin-bottom:12px">
+      <div class="card-title"><span class="icon">📅</span> ${displayDate(d)}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px">出席 ${attendees.length} / 15 人</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>姓名</th><th>時段</th><th>費用</th></tr></thead>
+          <tbody>
+            ${fees.filter(f => f.slotId || filterMember === f.member).map(f => `
+              <tr ${filterMember === f.member ? 'style="background:var(--primary-light)"' : ''}>
+                <td>${f.member}</td>
+                <td>${f.slotId ? TIME_SLOTS.find(s=>s.id===f.slotId)?.label : '-'}</td>
+                <td>${f.fee > 0 ? f.fee + ' 元' : '-'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+  el.innerHTML = html || '<div class="loading">無符合記錄</div>';
+}
+
+// ─── LOG TAB ─────────────────────────────────────────────────────────────────
+async function loadLogTab() {
+  const logs = await getLogs();
+  const el = document.getElementById('log-content');
+  if (logs.length === 0) { el.innerHTML = '<div class="loading">尚無操作記錄</div>'; return; }
+  el.innerHTML = logs.map(l => `
+    <div class="log-item">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="badge badge-gray">${l.user}</span>
+        <span style="font-weight:500">${l.action}</span>
+        <span class="log-time" style="margin-left:auto">${new Date(l.ts).toLocaleString('zh-TW')}</span>
+      </div>
+      ${l.detail ? `<div class="log-msg" style="color:var(--text-muted)">${l.detail}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ─── TABS ───────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(`page-${tab}`).classList.add('active');
+  const tabs = { attend: 0, members: 1, history: 2, log: 3 };
+  document.querySelectorAll('.tab')[tabs[tab]]?.classList.add('active');
+
+  if (tab === 'members') loadMembersTab();
+  if (tab === 'history') loadHistoryTab(null);
+  if (tab === 'log') loadLogTab();
+}
+
+// ─── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── INIT ───────────────────────────────────────────────────────────────────
+initLogin();
+</script>
+</body>
+</html>
