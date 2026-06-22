@@ -553,7 +553,7 @@ function renderAttendance(dateStr) {
   el.innerHTML = `
     <div class="card">
       <div class="card-title">📋 ${fmtDisplay(dateStr)}</div>
-      <div class="info-box">您只能選擇自己的出席時段。費用即時計算顯示於下方。</div>
+      <div class="info-box">您只能選擇自己的出席時段，費用即時計算於同一列顯示。</div>
       <div style="margin-bottom:12px;font-size:14px;font-weight:500;">選擇您的時段（${currentUser}）：</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;" id="my-slots">
         ${TIME_SLOTS.map(s => `
@@ -564,21 +564,7 @@ function renderAttendance(dateStr) {
           <div class="cb">${!mySlot ? '✓' : ''}</div> 本週不參加
         </div>
       </div>
-      <div style="margin-bottom:8px;font-size:13px;color:var(--text-muted);">本週其他成員報名狀況：</div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>成員</th><th>時段</th></tr></thead>
-          <tbody>
-            ${members.map(m => `<tr ${m===currentUser?'style="background:var(--primary-light)"':''}>
-              <td>${m===currentUser?'<strong>▶ '+m+'（你）</strong>':m}</td>
-              <td>${currentDateData[m] ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===currentDateData[m])?.label}</span>` : '<span class="badge badge-gray">未報名</span>'}</td>
-            </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card" id="self-fee-card">
-      ${renderSelfFee(dateStr)}
+      <div id="attend-fee-table">${renderAttendFeeTable(dateStr)}</div>
     </div>`;
 }
 
@@ -604,19 +590,39 @@ function toggleMySlot(dateStr, slotId) {
   const noneChecked = !currentDateData[currentUser];
   noneEl.classList.toggle('checked', noneChecked);
   noneEl.querySelector('.cb').textContent = noneChecked ? '✓' : '';
-  document.getElementById('self-fee-card').innerHTML = renderSelfFee(dateStr);
+  const ftEl = document.getElementById('attend-fee-table');
+  if (ftEl) ftEl.innerHTML = renderAttendFeeTable(dateStr);
 }
 
-function renderSelfFee(dateStr) {
-  const hourCount = computeHourCount(currentDateData, getMemberNames());
-  const fees = computeFees(currentDateData, hourCount, getMemberNames());
-  const myFee = fees.find(f => f.member === currentUser);
+function renderAttendFeeTable(dateStr) {
+  const members = getMemberNames();
+  const hourCount = computeHourCount(currentDateData, members);
+  const fees = computeFees(currentDateData, hourCount, members);
+  const emptyHours = Object.entries(hourCount).filter(([,c])=>c===0).map(([h])=>`${h}:00`);
   return `
-    <div class="card-title">💰 本週費用預估</div>
-    ${renderFeeTable(hourCount, fees)}
-    ${myFee ? `<div style="margin-top:14px;padding:12px 16px;background:var(--primary-light);border-radius:8px;font-size:15px;">
-      您（${currentUser}）本週預估費用：<strong style="color:var(--primary-dark);font-size:18px;">${myFee.fee} 元</strong>
-    </div>` : ''}`;
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">
+      每小時出席人數：09~10 時 <strong>${hourCount[9]}</strong> 人 ／
+      10~11 時 <strong>${hourCount[10]}</strong> 人 ／
+      11~12 時 <strong>${hourCount[11]}</strong> 人
+      ${emptyHours.length ? `<br><span style="color:var(--danger)">⚠ 無人時段(${emptyHours.join(',')})由全體15人均分</span>` : ''}
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th></tr>
+        </thead>
+        <tbody>
+          ${fees.map(f => `<tr ${f.member===currentUser ? 'style="background:var(--primary-light)"' : ''}>
+            <td>${f.member===currentUser ? '<strong>▶ '+f.member+'（你）</strong>' : f.member}</td>
+            <td>${f.slotId
+              ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
+              : '<span class="badge badge-gray">未報名</span>'}</td>
+            <td style="font-size:12px;color:var(--text-muted)">${f.breakdown}</td>
+            <td><strong style="${f.member===currentUser ? 'color:var(--primary-dark);font-size:15px;' : ''}">${f.fee > 0 ? f.fee+' 元' : '-'}</strong></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════════════════
