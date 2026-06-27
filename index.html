@@ -179,12 +179,16 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Login -->
 <div id="login-overlay">
   <div class="login-card">
-    <div class="login-logo">🏸</div>
+    <div class="login-logo">������</div>
     <div class="login-title">羽球場管理系統</div>
-    <div class="login-sub">每週六 09:00 ~ 12:00 ｜ 550元/小時</div>
+    <div class="login-sub">每週六 10:00 ~ 12:00 ｜ 550元/小時</div>
     <div class="login-field">
       <label>選擇您的姓名</label>
-      <select id="login-name"><option value="">— 請選擇 —</option></select>
+      <select id="login-name" onchange="onLoginNameChange()"><option value="">— 請選擇 —</option></select>
+    </div>
+    <div class="login-field" id="pw-field">
+      <label>密碼</label>
+      <input type="password" id="login-pw" placeholder="請輸入密碼" onkeydown="if(event.key==='Enter')doLogin()" />
     </div>
     <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px;" onclick="doLogin()">進入系統</button>
     <div style="text-align:center;margin-top:14px;font-size:12px;color:var(--text-light)">管理者登入後會自動顯示管理功能</div>
@@ -194,8 +198,8 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Header -->
 <div class="header">
   <div class="header-left">
-    <div class="header-title">🏸 羽球場管理系統</div>
-    <div class="header-sub">每週六 09:00 ~ 12:00 ｜ 費用 550元/小時</div>
+    <div class="header-title">������ 羽球場管理系統</div>
+    <div class="header-sub">每週六 10:00 ~ 12:00 ｜ 費用 550元/小時</div>
   </div>
   <div class="header-right">
     <span class="admin-badge" id="role-badge" style="display:none">⚙️ 管理者</span>
@@ -206,10 +210,10 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Main -->
 <div class="container">
   <div class="tabs" id="main-tabs">
-    <button class="tab active" onclick="switchTab('attend')">📋 本週報名</button>
-    <button class="tab" onclick="switchTab('fee')">💰 費用總覽</button>
-    <button class="tab" onclick="switchTab('history')">📅 歷史記錄</button>
-    <!-- Admin tabs injected by JS -->
+    <button class="tab active" onclick="switchTab('attend')">������ 本週報名</button>
+    <button class="tab" onclick="switchTab('fee')">������ 費用總覽</button>
+    <button class="tab" onclick="switchTab('history')">������ 歷史記錄</button>
+    <!-- Additional tabs injected by JS -->
   </div>
 
   <!-- Tab: Attend -->
@@ -235,19 +239,20 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   <!-- Tab: History -->
   <div id="page-history" class="page">
     <div class="card">
-      <div class="card-title">📅 歷史出席記錄</div>
+      <div class="card-title">������ 歷史出席記錄</div>
       <div id="history-content"><div class="loading">載入中...</div></div>
     </div>
   </div>
 
-  <!-- Tab: Members (admin) -->
+  <!-- Tab: Members -->
   <div id="page-members" class="page">
-    <div class="admin-box">⚙️ 管理者功能：修改預繳金額、查看所有成員餘額狀態</div>
+    <div id="members-admin-box" class="admin-box" style="display:none">⚙️ 管理者功能：修改預繳金額、查看所有成員餘額狀態</div>
+    <div id="members-info-box" class="info-box" style="display:none">������ 此頁面顯示所有成員資訊（僅供查閱）</div>
     <div class="grid-4" id="member-stats" style="margin-bottom:16px"></div>
     <div class="card">
       <div class="section-header">
-        <div class="card-title" style="margin-bottom:0">👥 會員餘額管理</div>
-        <button class="btn btn-admin btn-sm" onclick="showAddMemberModal()">＋ 新增成員</button>
+        <div class="card-title" style="margin-bottom:0">������ 會員餘額管理</div>
+        <button id="add-member-btn" class="btn btn-admin btn-sm" onclick="showAddMemberModal()" style="display:none">＋ 新增成員</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -275,7 +280,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   <div id="page-log" class="page">
     <div class="admin-box">⚙️ 管理者功能：所有人的操作都記錄在此</div>
     <div class="card">
-      <div class="card-title">🔍 所有操作記錄</div>
+      <div class="card-title">������ 所有操作記錄</div>
       <div id="log-content"><div class="loading">載入中...</div></div>
     </div>
   </div>
@@ -284,7 +289,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Modal: Edit Prepaid -->
 <div id="modal-prepaid" class="modal-backdrop" style="display:none">
   <div class="modal">
-    <div class="modal-title">💰 修改預繳金額</div>
+    <div class="modal-title">������ 修改預繳金額</div>
     <div class="modal-field">
       <label>成員姓名</label>
       <input type="text" id="modal-member-name" readonly style="background:var(--bg);" />
@@ -337,7 +342,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Modal: Remove Member -->
 <div id="modal-remove-member" class="modal-backdrop" style="display:none">
   <div class="modal">
-    <div class="modal-title">🗑️ 移除成員確認</div>
+    <div class="modal-title">������️ 移除成員確認</div>
     <div id="modal-remove-msg" style="font-size:14px;margin-bottom:16px;color:var(--text-muted)"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-remove-member')">取消</button>
@@ -349,7 +354,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Modal: Delete Attendance -->
 <div id="modal-delete-attend" class="modal-backdrop" style="display:none">
   <div class="modal">
-    <div class="modal-title">🗑️ 刪除出席記錄</div>
+    <div class="modal-title">������️ 刪除出席記錄</div>
     <div id="modal-delete-msg" style="font-size:14px;margin-bottom:16px;color:var(--text-muted)"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-delete-attend')">取消</button>
@@ -364,32 +369,47 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 // ═══════════════════════════════════════════════════════════
 // CONFIG — 部署時請填入 Firebase 資訊
 // ═══════════════════════════════════════════════════════════
-const FIREBASE_API_KEY  = 'YOUR_API_KEY';    // 填入後啟用雲端同步
-const FIREBASE_PROJECT  = 'YOUR_PROJECT_ID'; // 填入後啟用雲端同步
+const FIREBASE_API_KEY  = 'YOUR_API_KEY';
+const FIREBASE_PROJECT  = 'YOUR_PROJECT_ID';
 const USE_CLOUD = FIREBASE_API_KEY !== 'YOUR_API_KEY';
 
 // ═══════════════════════════════════════════════════════════
-// INITIAL DATA — 修改這裡設定成員與管理者
+// INITIAL DATA
 // ═══════════════════════════════════════════════════════════
-const DEFAULT_ADMINS  = ['小明', '小華', '小珍', '小強']; // 4位管理者
-const DEFAULT_MEMBERS = [
-  '小明','小華','小珍','小強','小芳',
-  '小龍','小鳳','小豪','小雯','小傑',
-  '小涵','小誠','小君','小偉','小玲'
+const DEFAULT_PASSWORD = 'temp';
+
+// 角色：admin / member / guest
+const DEFAULT_MEMBERS_DATA = [
+  { name: 'June',   role: 'admin',  prepaid: 0, used: 0 },
+  { name: 'Frank',  role: 'admin',  prepaid: 0, used: 0 },
+  { name: 'Kenny',  role: 'admin',  prepaid: 0, used: 0 },
+  { name: '瓦勒司', role: 'member', prepaid: 0, used: 0 },
+  { name: '沛修',   role: 'member', prepaid: 0, used: 0 },
+  { name: 'Darnell',role: 'member', prepaid: 0, used: 0 },
+  { name: 'PC',     role: 'member', prepaid: 0, used: 0 },
+  { name: 'Issac',  role: 'member', prepaid: 0, used: 0 },
+  { name: '玉晶',   role: 'member', prepaid: 0, used: 0 },
+  { name: '波波',   role: 'member', prepaid: 0, used: 0 },
+  { name: 'Frodo',  role: 'member', prepaid: 0, used: 0 },
+  { name: 'user',   role: 'guest',  prepaid: 0, used: 0 },
 ];
 
+// 只剩一個時段
 const TIME_SLOTS = [
-  { id: 'A', label: '09:00 ~ 11:00', hours: [9, 10] },
   { id: 'B', label: '10:00 ~ 12:00', hours: [10, 11] },
-  { id: 'C', label: '09:00 ~ 12:00', hours: [9, 10, 11] },
 ];
 const RATE = 550;
+
+// 最早可報名日期：2025/7/4 起每週六
+const SCHEDULE_START = '2025-07-04';
 
 // ═══════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════
 let currentUser  = null;
+let currentRole  = null;   // 'admin' | 'member' | 'guest'
 let isAdmin      = false;
+let isGuest      = false;
 let currentDateData    = {};
 let adminDateData      = {};
 let pendingRemoveMember = null;
@@ -403,16 +423,14 @@ function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { 
 function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
 
 function getMembersConfig() {
-  return lsGet('membersConfig') || DEFAULT_MEMBERS.map(n => ({
-    name: n,
-    role: DEFAULT_ADMINS.includes(n) ? 'admin' : 'member',
-    prepaid: 0,
-    used: 0
-  }));
+  return lsGet('membersConfig') || DEFAULT_MEMBERS_DATA.map(m => ({ ...m }));
 }
 function saveMembersConfig(cfg) { lsSet('membersConfig', cfg); }
 
-function getMemberNames() { return getMembersConfig().map(m => m.name); }
+function getMemberNames() {
+  // 遊客(user)不計入出席名單，只有 admin + member
+  return getMembersConfig().filter(m => m.role !== 'guest').map(m => m.name);
+}
 function getAdminNames()  { return getMembersConfig().filter(m => m.role === 'admin').map(m => m.name); }
 
 function getAttendDoc(date)        { return lsGet(`att_${date}`) || {}; }
@@ -440,20 +458,48 @@ function getHistoryDates() {
 // ═══════════════════════════════════════════════════════════
 function initLogin() {
   const sel = document.getElementById('login-name');
-  getMemberNames().forEach(n => {
+  getMembersConfig().forEach(m => {
     const o = document.createElement('option');
-    o.value = n; o.textContent = n;
+    o.value = m.name; o.textContent = m.name + (m.role === 'admin' ? ' ⚙️' : m.role === 'guest' ? ' ������' : '');
     sel.appendChild(o);
   });
+}
+
+function onLoginNameChange() {
+  const name = document.getElementById('login-name').value;
+  const cfg = getMembersConfig().find(m => m.name === name);
+  const pwField = document.getElementById('pw-field');
+  const pwInput = document.getElementById('login-pw');
+  if (!name || cfg?.role === 'guest') {
+    pwField.style.display = 'none';
+    pwInput.value = '';
+  } else {
+    pwField.style.display = 'block';
+    pwInput.value = '';
+    setTimeout(() => pwInput.focus(), 50);
+  }
 }
 
 function doLogin() {
   const name = document.getElementById('login-name').value;
   if (!name) { showToast('請選擇姓名', 'error'); return; }
+  const cfg = getMembersConfig().find(m => m.name === name);
+  if (!cfg) { showToast('找不到此帳號', 'error'); return; }
+
+  // 遊客不需要密碼
+  if (cfg.role !== 'guest') {
+    const pw = document.getElementById('login-pw').value;
+    if (pw !== DEFAULT_PASSWORD) { showToast('密碼錯誤', 'error'); return; }
+  }
+
   currentUser = name;
-  isAdmin = getAdminNames().includes(name);
+  currentRole = cfg.role;
+  isAdmin = cfg.role === 'admin';
+  isGuest = cfg.role === 'guest';
+
   document.getElementById('login-overlay').style.display = 'none';
-  document.getElementById('current-user-badge').textContent = `👤 ${name}  登出`;
+  const roleLabel = isAdmin ? '⚙️ 管理者' : isGuest ? '������ 遊客' : '������ 使用者';
+  document.getElementById('current-user-badge').textContent = `${roleLabel} ${name}  登出`;
   if (isAdmin) document.getElementById('role-badge').style.display = 'inline-block';
   injectAdminTabs();
   initApp();
@@ -461,25 +507,45 @@ function doLogin() {
 
 function logout() {
   if (!confirm('確定要登出？')) return;
-  currentUser = null; isAdmin = false;
+  currentUser = null; currentRole = null; isAdmin = false; isGuest = false;
   location.reload();
 }
 
 function injectAdminTabs() {
-  if (!isAdmin) return;
   const tabs = document.getElementById('main-tabs');
-  const defs = [
-    { id: 'members',      label: '👥 會員管理' },
-    { id: 'admin-attend', label: '✏️ 編輯出席' },
-    { id: 'log',          label: '🔍 操作記錄' },
-  ];
-  defs.forEach(d => {
-    const btn = document.createElement('button');
-    btn.className = 'tab admin-tab';
-    btn.textContent = d.label;
-    btn.onclick = () => switchTab(d.id);
-    tabs.appendChild(btn);
-  });
+
+  // 一般使用者 + 管理者都可以看會員資訊
+  if (!isGuest) {
+    const memberBtn = document.createElement('button');
+    memberBtn.className = 'tab';
+    memberBtn.textContent = '������ 會員資訊';
+    memberBtn.onclick = () => switchTab('members');
+    tabs.appendChild(memberBtn);
+  }
+
+  // 遊客也可以看會員資訊（只讀）
+  if (isGuest) {
+    const memberBtn = document.createElement('button');
+    memberBtn.className = 'tab';
+    memberBtn.textContent = '������ 會員資訊';
+    memberBtn.onclick = () => switchTab('members');
+    tabs.appendChild(memberBtn);
+  }
+
+  // 管理者專屬
+  if (isAdmin) {
+    const defs = [
+      { id: 'admin-attend', label: '✏️ 編輯出席' },
+      { id: 'log',          label: '������ 操作記錄' },
+    ];
+    defs.forEach(d => {
+      const btn = document.createElement('button');
+      btn.className = 'tab admin-tab';
+      btn.textContent = d.label;
+      btn.onclick = () => switchTab(d.id);
+      tabs.appendChild(btn);
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -487,9 +553,20 @@ function injectAdminTabs() {
 // ═══════════════════════════════════════════════════════════
 function initApp() {
   const sat = nextSaturday(new Date());
-  document.getElementById('attend-date').value = fmt(sat);
-  document.getElementById('admin-attend-date').value = fmt(sat);
+  const satStr = fmt(sat);
+  // 不得早於 SCHEDULE_START
+  const useDate = satStr >= SCHEDULE_START ? satStr : SCHEDULE_START;
+  document.getElementById('attend-date').value = useDate;
+  document.getElementById('admin-attend-date').value = useDate;
+  // 限制最早日期
+  document.getElementById('attend-date').min = SCHEDULE_START;
+  document.getElementById('admin-attend-date').min = SCHEDULE_START;
   loadAttendance();
+  // 遊客隱藏報名操作提示
+  if (isGuest) {
+    const tabs = document.getElementById('main-tabs');
+    // 隱藏費用總覽 tab 不隱藏（遊客可看）
+  }
 }
 
 function nextSaturday(from) {
@@ -519,14 +596,10 @@ function switchTab(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById(`page-${id}`).classList.add('active');
-  const allTabs = document.querySelectorAll('.tab');
-  const map = { attend:0, fee:1, history:2 };
-  if (id in map) { allTabs[map[id]].classList.add('active'); }
-  else {
-    const adminMap = { members:0, 'admin-attend':1, log:2 };
-    const adminTabs = document.querySelectorAll('.tab.admin-tab');
-    if (id in adminMap) adminTabs[adminMap[id]]?.classList.add('active');
-  }
+  // Find the matching tab button by its onclick
+  document.querySelectorAll('.tab').forEach(t => {
+    if (t.getAttribute('onclick') === `switchTab('${id}')`) t.classList.add('active');
+  });
   if (id === 'fee')          loadFeeOverview();
   if (id === 'history')      loadHistory();
   if (id === 'members')      loadMembersTab();
@@ -550,9 +623,30 @@ function renderAttendance(dateStr) {
   const el = document.getElementById('attend-content');
   const mySlot = currentDateData[currentUser];
 
+  // 遊客：只讀模式
+  if (isGuest) {
+    el.innerHTML = `
+      <div class="card">
+        <div class="card-title">������ ${fmtDisplay(dateStr)}</div>
+        <div class="info-box">������ 遊客模式：僅能查看，無法修改出席。</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>成員</th><th>時段</th></tr></thead>
+            <tbody>
+              ${members.map(m => `<tr>
+                <td>${m}</td>
+                <td>${currentDateData[m] ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===currentDateData[m])?.label}</span>` : '<span class="badge badge-gray">未報名</span>'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    return;
+  }
+
   el.innerHTML = `
     <div class="card">
-      <div class="card-title">📋 ${fmtDisplay(dateStr)}</div>
+      <div class="card-title">������ ${fmtDisplay(dateStr)}</div>
       <div class="info-box">您只能選擇自己的出席時段。費用即時計算顯示於下方。</div>
       <div style="margin-bottom:12px;font-size:14px;font-weight:500;">選擇您的時段（${currentUser}）：</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;" id="my-slots">
@@ -612,7 +706,7 @@ function renderSelfFee(dateStr) {
   const fees = computeFees(currentDateData, hourCount, getMemberNames());
   const myFee = fees.find(f => f.member === currentUser);
   return `
-    <div class="card-title">💰 本週費用預估</div>
+    <div class="card-title">������ 本週費用預估</div>
     ${renderFeeTable(hourCount, fees)}
     ${myFee ? `<div style="margin-top:14px;padding:12px 16px;background:var(--primary-light);border-radius:8px;font-size:15px;">
       您（${currentUser}）本週預估費用：<strong style="color:var(--primary-dark);font-size:18px;">${myFee.fee} 元</strong>
@@ -642,18 +736,18 @@ function renderAdminAttendance(dateStr) {
     <div class="card">
       <div class="section-header">
         <div class="card-title" style="margin-bottom:0">✏️ ${fmtDisplay(dateStr)} — 管理者編輯</div>
-        <button class="btn btn-danger btn-sm" onclick="showDeleteAttendModal('${dateStr}')">🗑️ 刪除此日記錄</button>
+        <button class="btn btn-danger btn-sm" onclick="showDeleteAttendModal('${dateStr}')">������️ 刪除此日記錄</button>
       </div>
       <div id="admin-member-list">
         ${members.map(m => renderAdminMemberRow(m, dateStr)).join('')}
       </div>
       <hr>
       <div style="display:flex;justify-content:flex-end;gap:10px;">
-        <button class="btn btn-admin" onclick="saveAdminAttendance('${dateStr}')">💾 儲存所有變更</button>
+        <button class="btn btn-admin" onclick="saveAdminAttendance('${dateStr}')">������ 儲存所有變更</button>
       </div>
     </div>
     <div class="card" id="admin-fee-card">
-      <div class="card-title">💰 費用計算</div>
+      <div class="card-title">������ 費用計算</div>
       ${renderFeeTable(hourCount, fees)}
     </div>`;
 
@@ -697,7 +791,7 @@ function refreshAdminFee(dateStr) {
   const hourCount = computeHourCount(adminDateData, members);
   const fees = computeFees(adminDateData, hourCount, members);
   const card = document.getElementById('admin-fee-card');
-  if (card) card.innerHTML = `<div class="card-title">💰 費用計算</div>${renderFeeTable(hourCount, fees)}`;
+  if (card) card.innerHTML = `<div class="card-title">������ 費用計算</div>${renderFeeTable(hourCount, fees)}`;
 }
 
 function saveAdminAttendance(dateStr) {
@@ -736,10 +830,10 @@ function loadFeeOverview() {
 
   document.getElementById('fee-overview-content').innerHTML = `
     <div class="card">
-      <div class="card-title">💰 費用總覽 — ${fmtDisplay(dateStr)}</div>
+      <div class="card-title">������ 費用總覽 — ${fmtDisplay(dateStr)}</div>
       ${renderFeeTable(hourCount, fees)}
       <div class="fee-breakdown">
-        <div class="fee-row"><span>場地總費用（3小時）</span><span>${RATE*3} 元</span></div>
+        <div class="fee-row"><span>場地總費用（2小時）</span><span>${RATE*2} 元</span></div>
         <div class="fee-row total"><span>系統計算分攤合計</span><span>${total} 元</span></div>
       </div>
     </div>`;
@@ -749,8 +843,11 @@ function loadFeeOverview() {
 // MEMBERS TAB (admin)
 // ═══════════════════════════════════════════════════════════
 function loadMembersTab() {
-  if (!isAdmin) return;
-  const cfg = getMembersConfig();
+  document.getElementById('members-admin-box').style.display = isAdmin ? '' : 'none';
+  document.getElementById('members-info-box').style.display  = isAdmin ? 'none' : '';
+  document.getElementById('add-member-btn').style.display    = isAdmin ? '' : 'none';
+
+  const cfg = getMembersConfig().filter(m => m.role !== 'guest');
   const totalPrepaid = cfg.reduce((s,m)=>s+(m.prepaid||0),0);
   const totalUsed    = cfg.reduce((s,m)=>s+(m.used||0),0);
   const low          = cfg.filter(m=>(m.prepaid-m.used)<500).length;
@@ -766,14 +863,17 @@ function loadMembersTab() {
     const bal = (m.prepaid||0) - (m.used||0);
     const status = bal < 0 ? 'badge-red' : bal < 500 ? 'badge-amber' : 'badge-green';
     const statusTxt = bal < 0 ? '欠費' : bal < 500 ? '即將不足' : '充足';
+    const roleLabel = m.role==='admin' ? '<span class="badge badge-admin">管理者</span>' : '<span class="badge badge-gray">一般</span>';
+    const editBtns = isAdmin ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">修改</button>` : '';
+    const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">移除</button>` : '-';
     return `<tr>
       <td><strong>${m.name}</strong></td>
-      <td>${m.role==='admin'?'<span class="badge badge-admin">管理者</span>':'<span class="badge badge-gray">一般</span>'}</td>
-      <td>${(m.prepaid||0).toLocaleString()} 元 <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">修改</button></td>
+      <td>${roleLabel}</td>
+      <td>${(m.prepaid||0).toLocaleString()} 元${editBtns}</td>
       <td>${(m.used||0).toLocaleString()} 元</td>
       <td><strong style="color:${bal<0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong></td>
       <td><span class="badge ${status}">${statusTxt}</span></td>
-      <td><button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">移除</button></td>
+      <td>${delBtn}</td>
     </tr>`;
   }).join('');
 }
@@ -892,7 +992,7 @@ function loadLog() {
 // FEE CALCULATION
 // ═══════════════════════════════════════════════════════════
 function computeHourCount(data, members) {
-  const hc = { 9:0, 10:0, 11:0 };
+  const hc = { 10:0, 11:0 };
   for (const [m, slotId] of Object.entries(data)) {
     if (!slotId || !members.includes(m)) continue;
     TIME_SLOTS.find(s=>s.id===slotId)?.hours.forEach(h => hc[h]++);
@@ -926,7 +1026,7 @@ function renderFeeTable(hourCount, fees) {
   const emptyHours = Object.entries(hourCount).filter(([,c])=>c===0).map(([h])=>`${h}:00`);
   return `
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">
-      每小時出席人數：09~10 時 <strong>${hourCount[9]}</strong> 人 ／ 10~11 時 <strong>${hourCount[10]}</strong> 人 ／ 11~12 時 <strong>${hourCount[11]}</strong> 人
+      每小時出席人數：10~11 時 <strong>${hourCount[10]}</strong> 人 ／ 11~12 時 <strong>${hourCount[11]}</strong> 人
       ${emptyHours.length?`<br><span style="color:var(--danger)">⚠ 無人時段(${emptyHours.join(',')})由全體均分</span>`:''}
     </div>
     <div class="table-wrap">
