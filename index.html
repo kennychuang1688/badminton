@@ -631,14 +631,25 @@ function getHistoryDates() {
 async function loadAllFromCloud() {
   showToast('載入雲端資料中...', 'info');
 
-  // 1. Load fixed keys directly (reliable)
-  const fixedKeys = ['membersConfig', 'logs', 'fundLog'];
-  await Promise.all(fixedKeys.map(async k => {
-    const v = await cloudGet(k);
-    if (v !== null) lsSet(k, v);
-  }));
+  // 1. Load membersConfig - if not in cloud, write defaults
+  const mcCloud = await cloudGet('membersConfig');
+  if (mcCloud !== null) {
+    lsSet('membersConfig', mcCloud);
+  } else {
+    // First time: write default members to Firestore
+    const defaults = DEFAULT_MEMBERS_DATA.map(m => ({ ...m }));
+    lsSet('membersConfig', defaults);
+    await cloudSet('membersConfig', defaults);
+  }
 
-  // 2. Load mhist_ for each member directly by name
+  // 2. Load logs and fundLog
+  const logsCloud = await cloudGet('logs');
+  if (logsCloud !== null) lsSet('logs', logsCloud);
+
+  const fundCloud = await cloudGet('fundLog');
+  if (fundCloud !== null) lsSet('fundLog', fundCloud);
+
+  // 3. Load mhist_ for each member
   const mc = getMembersConfig();
   await Promise.all(
     mc.filter(m => m.role !== 'guest').map(async m => {
@@ -647,7 +658,7 @@ async function loadAllFromCloud() {
     })
   );
 
-  // 3. Load attendance docs via paginated list
+  // 4. Load attendance docs via paginated list
   let pageToken = null;
   do {
     const url = `${FS_BASE}/app?key=${FIREBASE_API_KEY}&pageSize=100${pageToken ? '&pageToken=' + pageToken : ''}`;
