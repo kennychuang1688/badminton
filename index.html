@@ -620,11 +620,42 @@ function getHistoryDates() {
 // Load all data from Firestore into cache on startup
 async function loadAllFromCloud() {
   showToast('載入雲端資料中...', 'info');
-  // Load ALL documents from the app collection
-  const allDocs = await fsList('app');
-  for (const doc of allDocs) {
-    _cache[doc.id] = doc.data.v !== undefined ? doc.data.v : doc.data;
-  }
+
+  // 1. Load fixed keys directly (reliable)
+  const fixedKeys = ['membersConfig', 'logs', 'fundLog'];
+  await Promise.all(fixedKeys.map(async k => {
+    const v = await cloudGet(k);
+    if (v !== null) lsSet(k, v);
+  }));
+
+  // 2. Load mhist_ for each member directly by name
+  const mc = getMembersConfig();
+  await Promise.all(
+    mc.filter(m => m.role !== 'guest').map(async m => {
+      const v = await cloudGet('mhist_' + m.name);
+      if (v !== null) lsSet('mhist_' + m.name, v);
+    })
+  );
+
+  // 3. Load attendance docs via paginated list
+  let pageToken = null;
+  do {
+    const url = `${FS_BASE}/app?key=${FIREBASE_API_KEY}&pageSize=100${pageToken ? '&pageToken=' + pageToken : ''}`;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) break;
+      const d = await r.json();
+      for (const doc of (d.documents || [])) {
+        const id = doc.name.split('/').pop();
+        if (id.startsWith('att_')) {
+          const decoded = fsDecodeDoc(doc.fields);
+          _cache[id] = decoded.v !== undefined ? decoded.v : decoded;
+        }
+      }
+      pageToken = d.nextPageToken || null;
+    } catch { break; }
+  } while (pageToken);
+
   showToast('雲端資料載入完成', 'success');
 }
 
@@ -1076,13 +1107,6 @@ async function confirmDeleteAttendance() {
 function getFundLog() { return lsGet('fundLog') || []; }
 function saveFundLog(log) { lsSet('fundLog', log); }
 
-// Per-member prepaid history
-function getMemberHistory(name) { return lsGet('mhist_' + name) || []; }
-function addMemberHistory(name, entry) {
-  const log = getMemberHistory(name);
-  log.push({ ...entry, ts: new Date().toISOString() });
-  lsSet('mhist_' + name, log);
-}
 function addFundEntry(entry) {
   const log = getFundLog();
   log.unshift({ ...entry, ts: new Date().toISOString(), by: currentUser });
