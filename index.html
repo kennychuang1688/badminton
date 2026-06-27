@@ -248,7 +248,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>姓名</th><th>角色</th><th>預繳金額</th><th>已使用</th><th>剩餘</th><th>狀態</th><th>操作</th></tr></thead>
+          <thead><tr><th>姓名</th><th>角色</th><th>預繳金額</th><th>已使用</th><th>剩餘</th><th>操作</th></tr></thead>
           <tbody id="members-tbody"></tbody>
         </table>
       </div>
@@ -482,8 +482,7 @@ function initLogin() {
   const sel = document.getElementById('login-name');
   getMembersConfig().forEach(m => {
     const o = document.createElement('option');
-    const TITLES = { 'June': ' [財務]', 'Frank': ' [公關]', 'Kenny': ' [網管]' };
-    const suffix = TITLES[m.name] || (m.role === 'admin' ? ' [管]' : m.role === 'guest' ? ' [覽]' : '');
+    const suffix = m.role === 'guest' ? ' [遊客]' : '';
     o.value = m.name; o.textContent = m.name + suffix;
     sel.appendChild(o);
   });
@@ -1022,8 +1021,6 @@ function loadMembersTab() {
 
   document.getElementById('members-tbody').innerHTML = cfg.map(m => {
     const bal = (m.prepaid||0) - (m.used||0);
-    const status = bal <= 0 ? 'badge-red' : bal < 500 ? 'badge-amber' : 'badge-green';
-    const statusTxt = bal <= 0 ? '欠費/清零' : bal < 500 ? '即將不足' : '充足';
     const ROLE_TITLES = { 'June': '財務', 'Frank': '公關', 'Kenny': '網管' };
     const roleLabel = m.role === 'admin'
       ? `<span class="badge badge-admin">${ROLE_TITLES[m.name] || '管理者'}</span>`
@@ -1038,7 +1035,6 @@ function loadMembersTab() {
       <td>${(m.prepaid||0).toLocaleString()} 元${editBtns}</td>
       <td>${(m.used||0).toLocaleString()} 元</td>
       <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong></td>
-      <td><span class="badge ${status}">${statusTxt}</span></td>
       <td>${delBtn}</td>
     </tr>`;
   }).join('');
