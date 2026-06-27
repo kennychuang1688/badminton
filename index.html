@@ -482,7 +482,9 @@ function initLogin() {
   const sel = document.getElementById('login-name');
   getMembersConfig().forEach(m => {
     const o = document.createElement('option');
-    o.value = m.name; o.textContent = m.name + (m.role === 'admin' ? ' [管]' : m.role === 'guest' ? ' [覽]' : '');
+    const TITLES = { 'June': ' [財務]', 'Frank': ' [公關]', 'Kenny': ' [網管]' };
+    const suffix = TITLES[m.name] || (m.role === 'admin' ? ' [管]' : m.role === 'guest' ? ' [覽]' : '');
+    o.value = m.name; o.textContent = m.name + suffix;
     sel.appendChild(o);
   });
 }
@@ -692,6 +694,13 @@ function renderAttendance(dateStr) {
       ${belowMin ? '<span style="font-size:12px;color:#7a5c00;margin-left:8px">（人數未滿，待確認）</span>' : ''}
     </div>` : '';
 
+  const sessionTotal = fees.reduce((s, f) => s + f.fee, 0);
+  const feeSummaryHtml = `
+    <div class="fee-breakdown" style="margin-top:12px;">
+      <div class="fee-row"><span>場地費用（本場）</span><span>${RATE} 元</span></div>
+      <div class="fee-row total"><span>本場分攤合計</span><span>${sessionTotal} 元</span></div>
+    </div>`;
+
   el.innerHTML = `
     <div class="card">
       <div class="card-title">[報名] ${fmtDisplay(dateStr)}</div>
@@ -705,6 +714,7 @@ function renderAttendance(dateStr) {
           </table>
         </div>
         ${myFeeHtml}
+        ${feeSummaryHtml}
       </div>
     </div>
 `;
@@ -773,6 +783,13 @@ function refreshAttendFeeTable(dateStr) {
       ${belowMin ? '<span style="font-size:12px;color:#7a5c00;margin-left:8px">（人數未滿，待確認）</span>' : ''}
     </div>` : '';
 
+  const sessionTotal2 = fees.reduce((s, f) => s + f.fee, 0);
+  const feeSumHtml = `
+    <div class="fee-breakdown" style="margin-top:12px;">
+      <div class="fee-row"><span>場地費用（本場）</span><span>${RATE} 元</span></div>
+      <div class="fee-row total"><span>本場分攤合計</span><span>${sessionTotal2} 元</span></div>
+    </div>`;
+
   const container = document.getElementById('attend-fee-section');
   if (container) {
     container.innerHTML = warnHtml + `
@@ -782,7 +799,7 @@ function refreshAttendFeeTable(dateStr) {
           <tbody>${tableRows}</tbody>
         </table>
       </div>
-      ${myFeeHtml}`;
+      ${myFeeHtml}` + feeSumHtml;
   }
 }
 
@@ -978,14 +995,6 @@ function loadFeeOverview() {
 
   document.getElementById('fee-overview-content').innerHTML = `
     <div class="card">
-      <div class="card-title">[費用] 本場費用 - ${fmtDisplay(dateStr)}</div>
-      ${renderFeeTable(attendeeCount, fees)}
-      <div class="fee-breakdown">
-        <div class="fee-row"><span>場地費用（本場）</span><span>${RATE} 元</span></div>
-        <div class="fee-row total"><span>本場分攤合計</span><span>${total} 元</span></div>
-      </div>
-    </div>
-    <div class="card">
       <div class="card-title">[費用] 公費帳戶概覽</div>
 
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-muted)">收支記錄（由舊到新）</div>
@@ -1015,7 +1024,12 @@ function loadMembersTab() {
     const bal = (m.prepaid||0) - (m.used||0);
     const status = bal <= 0 ? 'badge-red' : bal < 500 ? 'badge-amber' : 'badge-green';
     const statusTxt = bal <= 0 ? '欠費/清零' : bal < 500 ? '即將不足' : '充足';
-    const roleLabel = m.role==='admin' ? '<span class="badge badge-admin">管理者</span>' : '<span class="badge badge-gray">一般</span>';
+    const ROLE_TITLES = { 'June': '財務', 'Frank': '公關', 'Kenny': '網管' };
+    const roleLabel = m.role === 'admin'
+      ? `<span class="badge badge-admin">${ROLE_TITLES[m.name] || '管理者'}</span>`
+      : m.role === 'guest'
+        ? '<span class="badge badge-gray">遊客</span>'
+        : '<span class="badge badge-green">會員</span>';
     const editBtns = isAdmin ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
     const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">移除</button>` : '-';
     return `<tr>
