@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>羽球場管理系統</title>
+<title>通用棄將羽球管理系統</title>
 <style>
 :root {
   --primary: #1D9E75;
@@ -179,8 +179,8 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Login -->
 <div id="login-overlay">
   <div class="login-card">
-    <div class="login-logo">[羽球]</div>
-    <div class="login-title">羽球場管理系統</div>
+    <div class="login-logo"></div>
+    <div class="login-title">通用棄將羽球管理系統</div>
     <div class="login-sub">每週六 10:00 ~ 12:00 ｜ 每場2小時費用 1200元</div>
     <div class="login-field">
       <label>選擇您的姓名</label>
@@ -198,7 +198,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Header -->
 <div class="header">
   <div class="header-left">
-    <div class="header-title">[羽球] 羽球場管理系統</div>
+    <div class="header-title">通用棄將羽球管理系統</div>
     <div class="header-sub">每週六 10:00 ~ 12:00 ｜ 每場2小時費用 1200元</div>
   </div>
   <div class="header-right">
@@ -521,8 +521,7 @@ function doLogin() {
   isGuest = cfg.role === 'guest';
 
   document.getElementById('login-overlay').style.display = 'none';
-  const roleLabel = isAdmin ? '[管] 管理者' : isGuest ? '[覽] 遊客' : '[用] 使用者';
-  document.getElementById('current-user-badge').textContent = `${roleLabel} ${name}  登出`;
+  document.getElementById('current-user-badge').textContent = `${name}  登出`;
   if (isAdmin) document.getElementById('role-badge').style.display = 'inline-block';
   injectAdminTabs();
   initApp();
@@ -707,9 +706,6 @@ function renderAttendance(dateStr) {
     <div class="card">
       <div class="card-title">[報名] ${fmtDisplay(dateStr)}</div>
       ${slotSelectorHtml}
-      ${isAdmin ? `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-        <button class="btn btn-danger btn-sm" onclick="showDeleteAttendModal('${dateStr}')">[刪] 刪除本週出席記錄</button>
-      </div>` : ''}
       <div id="attend-fee-section">
         ${warnHtml}
         <div class="table-wrap">
