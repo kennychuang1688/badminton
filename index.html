@@ -255,19 +255,6 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
     </div>
   </div>
 
-  <!-- Tab: Admin Attend (admin) -->
-  <div id="page-admin-attend" class="page">
-    <div class="admin-box">[管] 管理者功能：可修改任何人的出席時段、刪除整筆出席記錄</div>
-    <div class="card">
-      <div class="date-row">
-        <input type="date" id="admin-attend-date" />
-        <button class="btn btn-secondary" onclick="jumpAdminNextSaturday()">下週六</button>
-        <button class="btn btn-admin" onclick="loadAdminAttendance()">載入</button>
-      </div>
-    </div>
-    <div id="admin-attend-content"><div class="loading">請選擇日期後載入</div></div>
-  </div>
-
   <!-- Tab: Log (admin) -->
   <div id="page-log" class="page">
     <div class="admin-box">[管] 管理者功能：所有人的操作都記錄在此</div>
@@ -368,7 +355,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Modal: Court Fee -->
 <div id="modal-court-fee" class="modal-backdrop" style="display:none">
   <div class="modal">
-    <div class="modal-title">記錄季繳球場費</div>
+    <div class="modal-title">設定繳球場季費</div>
     <div class="modal-field">
       <label>繳交金額（元）</label>
       <input type="number" id="modal-court-amount" min="0" step="100" placeholder="例如：20000" />
@@ -380,6 +367,19 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-court-fee')">取消</button>
       <button class="btn btn-danger" onclick="confirmCourtFee()">確認記錄</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Admin Edit Member Slot -->
+<div id="modal-admin-slot" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <div class="modal-title" id="modal-admin-slot-title">[管] 編輯出席時段</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:12px" id="modal-admin-slot-sub"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;" id="modal-admin-slot-checks"></div>
+    <div class="modal-footer" style="margin-top:16px;">
+      <button class="btn btn-secondary" onclick="closeModal('modal-admin-slot')">取消</button>
+      <button class="btn btn-admin" onclick="confirmAdminSlotEdit()">儲存</button>
     </div>
   </div>
 </div>
@@ -558,7 +558,6 @@ function injectAdminTabs() {
   // 管理者專屬
   if (isAdmin) {
     const defs = [
-      { id: 'admin-attend', label: '[編輯] 編輯出席' },
       { id: 'log',          label: '[日誌] 操作記錄' },
     ];
     defs.forEach(d => {
@@ -580,10 +579,8 @@ function initApp() {
   // 不得早於 SCHEDULE_START
   const useDate = satStr >= SCHEDULE_START ? satStr : SCHEDULE_START;
   document.getElementById('attend-date').value = useDate;
-  document.getElementById('admin-attend-date').value = useDate;
   // 限制最早日期
   document.getElementById('attend-date').min = SCHEDULE_START;
-  document.getElementById('admin-attend-date').min = SCHEDULE_START;
   loadAttendance();
   // 遊客隱藏報名操作提示
   if (isGuest) {
@@ -667,7 +664,7 @@ function renderAttendance(dateStr) {
       <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 費用暫由全體 ${members.length} 人均分
     </div>` : '';
 
-  // Merged table: 成員 / 時段 / 費用明細 / 應付
+  // Merged table: 成員 / 時段 / 費用明細 / 應付 / (管理者編輯)
   const tableRows = fees.map(f => {
     const isMe = f.member === currentUser;
     const rowStyle = isMe ? 'background:var(--primary-light)' : (f.belowMin && !f.slotId ? 'background:#fff8e1' : '');
@@ -678,13 +675,19 @@ function renderAttendance(dateStr) {
     const feeCell = f.fee > 0
       ? `<strong style="color:var(--primary-dark)">${f.fee} 元</strong>`
       : '<span style="color:var(--text-light)">-</span>';
+    const editBtn = isAdmin
+      ? `<button class="btn btn-admin btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showAdminSlotModal('${f.member}','${dateStr}')">編輯</button>`
+      : '';
     return `<tr style="${rowStyle}">
       <td>${nameCell}</td>
       <td>${slotCell}</td>
       <td style="font-size:12px;color:var(--text-muted)">${f.breakdown}</td>
       <td>${feeCell}</td>
+      ${isAdmin ? `<td>${editBtn}</td>` : ''}
     </tr>`;
   }).join('');
+
+  const adminThHtml = isAdmin ? '<th></th>' : '';
 
   const myFee = fees.find(f => f.member === currentUser);
   const myFeeHtml = (!isGuest && myFee && myFee.fee > 0) ? `
@@ -704,11 +707,14 @@ function renderAttendance(dateStr) {
     <div class="card">
       <div class="card-title">[報名] ${fmtDisplay(dateStr)}</div>
       ${slotSelectorHtml}
+      ${isAdmin ? `<div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+        <button class="btn btn-danger btn-sm" onclick="showDeleteAttendModal('${dateStr}')">[刪] 刪除本週出席記錄</button>
+      </div>` : ''}
       <div id="attend-fee-section">
         ${warnHtml}
         <div class="table-wrap">
           <table>
-            <thead><tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
+            <thead><tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th>${adminThHtml}</tr></thead>
             <tbody>${tableRows}</tbody>
           </table>
         </div>
@@ -989,7 +995,7 @@ function loadFeeOverview() {
 
   const adminCourtBtn = isAdmin ? `
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-danger btn-sm" onclick="showCourtFeeModal()">記錄季繳球場費</button>
+      <button class="btn btn-danger btn-sm" onclick="showCourtFeeModal()">設定繳球場季費</button>
     </div>` : '';
 
   document.getElementById('fee-overview-content').innerHTML = `
@@ -1028,7 +1034,7 @@ function loadMembersTab() {
         ? '<span class="badge badge-gray">遊客</span>'
         : '<span class="badge badge-green">會員</span>';
     const editBtns = isAdmin ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
-    const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">移除</button>` : '-';
+    const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">- 移除會員帳號</button>` : '-';
     return `<tr>
       <td><strong>${m.name}</strong></td>
       <td>${roleLabel}</td>
@@ -1302,10 +1308,70 @@ function confirmCourtFee() {
   const note = document.getElementById('modal-court-note').value.trim();
   if (amount <= 0) { showToast('請輸入金額', 'error'); return; }
   addFundEntry({ type: 'court', amount, note });
-  addLog({ action: '記錄季繳球場費', detail: `${amount.toLocaleString()} 元 ${note}` });
+  addLog({ action: '設定繳球場季費', detail: `${amount.toLocaleString()} 元 ${note}` });
   showToast(`已記錄：季繳 ${amount.toLocaleString()} 元`, 'success');
   closeModal('modal-court-fee');
   loadFeeOverview();
+}
+
+// ===========================================================
+// ADMIN SLOT EDIT (inline on attend page)
+// ===========================================================
+let adminSlotMember = null;
+let adminSlotDate = null;
+let adminSlotPending = null;
+
+function showAdminSlotModal(member, dateStr) {
+  if (!isAdmin) return;
+  adminSlotMember = member;
+  adminSlotDate = dateStr;
+  adminSlotPending = currentDateData[member] || null;
+
+  document.getElementById('modal-admin-slot-title').textContent = `[管] 編輯出席 - ${member}`;
+  document.getElementById('modal-admin-slot-sub').textContent = `${fmtDisplay(dateStr)}  |  目前：${adminSlotPending ? TIME_SLOTS.find(s=>s.id===adminSlotPending)?.label : '未報名'}`;
+
+  const checksEl = document.getElementById('modal-admin-slot-checks');
+  checksEl.innerHTML = TIME_SLOTS.map(s => `
+    <div class="slot-check ${adminSlotPending === s.id ? 'checked' : ''}" id="aslot_${s.id}"
+         onclick="selectAdminSlot('${s.id}')">
+      <div class="cb">${adminSlotPending === s.id ? 'v' : ''}</div> ${s.label}
+    </div>`).join('') + `
+    <div class="slot-check ${!adminSlotPending ? 'checked' : ''}" id="aslot_none"
+         onclick="selectAdminSlot(null)">
+      <div class="cb">${!adminSlotPending ? 'v' : ''}</div> 不參加
+    </div>`;
+
+  document.getElementById('modal-admin-slot').style.display = 'flex';
+}
+
+function selectAdminSlot(slotId) {
+  adminSlotPending = slotId;
+  TIME_SLOTS.forEach(s => {
+    const el = document.getElementById(`aslot_${s.id}`);
+    if (!el) return;
+    const checked = adminSlotPending === s.id;
+    el.classList.toggle('checked', checked);
+    el.querySelector('.cb').textContent = checked ? 'v' : '';
+  });
+  const noneEl = document.getElementById('aslot_none');
+  const noneChecked = !adminSlotPending;
+  noneEl.classList.toggle('checked', noneChecked);
+  noneEl.querySelector('.cb').textContent = noneChecked ? 'v' : '';
+}
+
+function confirmAdminSlotEdit() {
+  if (!adminSlotMember || !adminSlotDate) return;
+  if (adminSlotPending) {
+    currentDateData[adminSlotMember] = adminSlotPending;
+  } else {
+    delete currentDateData[adminSlotMember];
+  }
+  saveAttendDoc(adminSlotDate, currentDateData);
+  addLog({ action: `管理者修改 ${adminSlotMember} 出席`, detail: `${adminSlotDate} -> ${adminSlotPending || '不參加'}` });
+  showToast(`已更新 ${adminSlotMember} 的出席`, 'success');
+  closeModal('modal-admin-slot');
+  // Re-render the full attend page to reflect changes
+  renderAttendance(adminSlotDate);
 }
 
 // ===========================================================
