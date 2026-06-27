@@ -774,7 +774,8 @@ function initApp() {
 
 function nextSaturday(from) {
   const d = new Date(from);
-  const diff = (6 - d.getDay() + 7) % 7 || 7;
+  // If today is Saturday (day=6), return today; otherwise go to next Saturday
+  const diff = (6 - d.getDay() + 7) % 7;
   d.setDate(d.getDate() + diff);
   return d;
 }
