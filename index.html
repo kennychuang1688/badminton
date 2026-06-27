@@ -774,12 +774,18 @@ function refreshAttendFeeTable(dateStr) {
     const feeCell = f.fee > 0
       ? `<strong style="color:var(--primary-dark)">${f.fee} 元</strong>`
       : '<span style="color:var(--text-light)">-</span>';
+    const editBtn = isAdmin
+      ? `<button class="btn btn-admin btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showAdminSlotModal('${f.member}','${dateStr}')">編輯</button>`
+      : '';
     return `<tr style="${rowStyle}">
       <td>${nameCell}</td><td>${slotCell}</td>
       <td style="font-size:12px;color:var(--text-muted)">${f.breakdown}</td>
       <td>${feeCell}</td>
+      ${isAdmin ? `<td>${editBtn}</td>` : ''}
     </tr>`;
   }).join('');
+
+  const adminThHtml = isAdmin ? '<th></th>' : '';
 
   const myFee = fees.find(f => f.member === currentUser);
   const myFeeHtml = (myFee && myFee.fee > 0) ? `
@@ -800,7 +806,7 @@ function refreshAttendFeeTable(dateStr) {
     container.innerHTML = warnHtml + `
       <div class="table-wrap">
         <table>
-          <thead><tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
+          <thead><tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th>${adminThHtml}</tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
       </div>
