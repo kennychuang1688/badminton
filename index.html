@@ -181,7 +181,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   <div class="login-card">
     <div class="login-logo">[羽球]</div>
     <div class="login-title">羽球場管理系統</div>
-    <div class="login-sub">每週六 10:00 ~ 12:00 ｜ 每場費用 600元</div>
+    <div class="login-sub">每週六 10:00 ~ 12:00 ｜ 每場2小時費用 1200元</div>
     <div class="login-field">
       <label>選擇您的姓名</label>
       <select id="login-name" onchange="onLoginNameChange()"><option value="">- 請選擇 -</option></select>
@@ -199,7 +199,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <div class="header">
   <div class="header-left">
     <div class="header-title">[羽球] 羽球場管理系統</div>
-    <div class="header-sub">每週六 10:00 ~ 12:00 ｜ 每場費用 600元</div>
+    <div class="header-sub">每週六 10:00 ~ 12:00 ｜ 每場2小時費用 1200元</div>
   </div>
   <div class="header-right">
     <span class="admin-badge" id="role-badge" style="display:none">[管] 管理者</span>
@@ -289,26 +289,36 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Modal: Edit Prepaid -->
 <div id="modal-prepaid" class="modal-backdrop" style="display:none">
   <div class="modal">
-    <div class="modal-title">[費用] 修改預繳金額</div>
+    <div class="modal-title" id="modal-prepaid-title">[費用] 儲值管理</div>
     <div class="modal-field">
       <label>成員姓名</label>
       <input type="text" id="modal-member-name" readonly style="background:var(--bg);" />
     </div>
     <div class="modal-field">
-      <label>目前預繳</label>
+      <label>目前預繳總額</label>
       <input type="text" id="modal-current-prepaid" readonly style="background:var(--bg);" />
     </div>
     <div class="modal-field">
-      <label>新預繳金額（元）</label>
-      <input type="number" id="modal-new-prepaid" min="0" step="500" placeholder="例如：5000" />
+      <label>操作類型</label>
+      <select id="modal-prepaid-type" onchange="onPrepaidTypeChange()">
+        <option value="add">新增儲值（加入金額）</option>
+        <option value="refund">退款（扣除金額）</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label id="modal-amount-label">儲值金額（元）</label>
+      <input type="number" id="modal-new-prepaid" min="0" step="500" placeholder="例如：3000" />
     </div>
     <div class="modal-field">
       <label>備註（選填）</label>
-      <input type="text" id="modal-prepaid-note" placeholder="例如：季繳第一期" />
+      <input type="text" id="modal-prepaid-note" placeholder="例如：2025 Q3 季繳" />
+    </div>
+    <div id="modal-prepaid-preview" style="background:var(--bg);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text-muted);margin-bottom:4px;display:none">
+      操作後餘額：<strong id="modal-prepaid-after">-</strong>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-prepaid')">取消</button>
-      <button class="btn btn-admin" onclick="confirmUpdatePrepaid()">確認更新</button>
+      <button class="btn btn-admin" id="modal-prepaid-confirm-btn" onclick="confirmUpdatePrepaid()">確認儲值</button>
     </div>
   </div>
 </div>
@@ -417,7 +427,8 @@ const DEFAULT_MEMBERS_DATA = [
 const TIME_SLOTS = [
   { id: 'B', label: '10:00 ~ 12:00', hours: [10, 11] },
 ];
-const RATE = 600; // 每場費用（2小時固定）
+const RATE = 1200; // 每場費用（2小時，600元/小時）
+const MIN_PLAYERS = 4; // 未滿此人數時全體均分
 
 // 最早可報名日期：2025/7/4 起每週六
 const SCHEDULE_START = '2025-07-04';
@@ -956,7 +967,7 @@ function loadMembersTab() {
     const status = bal < 0 ? 'badge-red' : bal < 500 ? 'badge-amber' : 'badge-green';
     const statusTxt = bal < 0 ? '欠費' : bal < 500 ? '即將不足' : '充足';
     const roleLabel = m.role==='admin' ? '<span class="badge badge-admin">管理者</span>' : '<span class="badge badge-gray">一般</span>';
-    const editBtns = isAdmin ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">修改</button>` : '';
+    const editBtns = isAdmin ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
     const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">移除</button>` : '-';
     return `<tr>
       <td><strong>${m.name}</strong></td>
@@ -974,22 +985,67 @@ function showPrepaidModal(name) {
   const cfg = getMembersConfig().find(m => m.name === name);
   pendingPrepaidMember = name;
   document.getElementById('modal-member-name').value = name;
-  document.getElementById('modal-current-prepaid').value = (cfg?.prepaid||0) + ' 元';
-  document.getElementById('modal-new-prepaid').value = cfg?.prepaid || 0;
+  document.getElementById('modal-current-prepaid').value = (cfg?.prepaid||0).toLocaleString() + ' 元';
+  document.getElementById('modal-new-prepaid').value = '';
   document.getElementById('modal-prepaid-note').value = '';
+  document.getElementById('modal-prepaid-type').value = 'add';
+  document.getElementById('modal-prepaid-preview').style.display = 'none';
+  document.getElementById('modal-amount-label').textContent = '儲值金額（元）';
+  document.getElementById('modal-prepaid-confirm-btn').textContent = '確認儲值';
+  document.getElementById('modal-prepaid-title').textContent = `[費用] 儲值管理 - ${name}`;
   document.getElementById('modal-prepaid').style.display = 'flex';
+  // live preview on amount change
+  document.getElementById('modal-new-prepaid').oninput = updatePrepaidPreview;
 }
+
+function onPrepaidTypeChange() {
+  const type = document.getElementById('modal-prepaid-type').value;
+  if (type === 'add') {
+    document.getElementById('modal-amount-label').textContent = '儲值金額（元）';
+    document.getElementById('modal-prepaid-confirm-btn').textContent = '確認儲值';
+  } else {
+    document.getElementById('modal-amount-label').textContent = '退款金額（元）';
+    document.getElementById('modal-prepaid-confirm-btn').textContent = '確認退款';
+  }
+  updatePrepaidPreview();
+}
+
+function updatePrepaidPreview() {
+  const cfg = getMembersConfig().find(m => m.name === pendingPrepaidMember);
+  const current = cfg?.prepaid || 0;
+  const type = document.getElementById('modal-prepaid-type').value;
+  const amt = parseInt(document.getElementById('modal-new-prepaid').value) || 0;
+  const after = type === 'add' ? current + amt : current - amt;
+  const preview = document.getElementById('modal-prepaid-preview');
+  const afterEl = document.getElementById('modal-prepaid-after');
+  if (amt > 0) {
+    preview.style.display = 'block';
+    afterEl.textContent = after.toLocaleString() + ' 元';
+    afterEl.style.color = after < 0 ? 'var(--danger)' : 'var(--primary)';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
 function confirmUpdatePrepaid() {
-  const val = parseInt(document.getElementById('modal-new-prepaid').value) || 0;
-  const note = document.getElementById('modal-prepaid-note').value;
+  const amt = parseInt(document.getElementById('modal-new-prepaid').value) || 0;
+  const type = document.getElementById('modal-prepaid-type').value;
+  const note = document.getElementById('modal-prepaid-note').value.trim();
+  if (amt <= 0) { showToast('請輸入金額', 'error'); return; }
   const cfg = getMembersConfig();
   const m = cfg.find(x => x.name === pendingPrepaidMember);
   if (!m) return;
-  const old = m.prepaid;
-  m.prepaid = val;
+  const oldVal = m.prepaid || 0;
+  if (type === 'add') {
+    m.prepaid = oldVal + amt;
+    addLog({ action: `${pendingPrepaidMember} 新增儲值`, detail: `+${amt.toLocaleString()} 元 (${oldVal.toLocaleString()} -> ${m.prepaid.toLocaleString()})${note?' 備註:'+note:''}` });
+    showToast(`${pendingPrepaidMember} 已儲值 ${amt.toLocaleString()} 元`, 'success');
+  } else {
+    m.prepaid = oldVal - amt;
+    addLog({ action: `${pendingPrepaidMember} 退款`, detail: `-${amt.toLocaleString()} 元 (${oldVal.toLocaleString()} -> ${m.prepaid.toLocaleString()})${note?' 備註:'+note:''}` });
+    showToast(`${pendingPrepaidMember} 已退款 ${amt.toLocaleString()} 元`, 'success');
+  }
   saveMembersConfig(cfg);
-  addLog({ action: `修改 ${pendingPrepaidMember} 預繳金額`, detail: `${old}->${val} 元${note?' 備註:'+note:''}` });
-  showToast(`${pendingPrepaidMember} 預繳已更新`, 'success');
   closeModal('modal-prepaid');
   loadMembersTab();
 }
@@ -1092,33 +1148,74 @@ function computeHourCount(data, members) {
 }
 
 function computeFees(data, attendeeCount, members) {
-  const cnt = attendeeCount > 0 ? attendeeCount : members.length;
-  const perPerson = Math.ceil(RATE / cnt);
+  const belowMin = attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
+  // If below min players, split across ALL members; otherwise split among attendees only
+  const divisor = (attendeeCount === 0 || belowMin) ? members.length : attendeeCount;
+  const perPerson = Math.ceil(RATE / divisor);
+  const note = belowMin
+    ? `人數不足${MIN_PLAYERS}人，暫由全體${members.length}人均分`
+    : '';
   return members.map(member => {
     const slotId = data[member];
-    if (!slotId) return { member, slotId: null, fee: 0, breakdown: '未報名' };
-    return { member, slotId, fee: perPerson, breakdown: `600 / ${cnt}人 = ${perPerson}元` };
+    if (!slotId) {
+      // Non-attendees also pay share when below min
+      const sharedFee = belowMin ? perPerson : 0;
+      const bd = belowMin ? `未到場但人數未滿${MIN_PLAYERS}人需分攤` : '未報名';
+      return { member, slotId: null, fee: sharedFee, breakdown: bd, belowMin };
+    }
+    return {
+      member, slotId, fee: perPerson,
+      breakdown: belowMin
+        ? `${RATE} / ${members.length}人(全體均分) = ${perPerson}元`
+        : `${RATE} / ${attendeeCount}人 = ${perPerson}元`,
+      belowMin, note
+    };
   });
 }
 
 function renderFeeTable(attendeeCount, fees) {
   const cnt = attendeeCount > 0 ? attendeeCount : 0;
+  const belowMin = cnt > 0 && cnt < MIN_PLAYERS;
+  const totalFee = fees.reduce((s, f) => s + f.fee, 0);
+
+  const warningHtml = belowMin ? `
+    <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
+      <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${cnt} 人）</strong><br>
+      費用暫由全體 ${fees.length} 人均分。待人數滿 ${MIN_PLAYERS} 人後，將僅由出席者分攤。
+    </div>` : '';
+
+  // When below min, show all members; otherwise only show attendees + summary
+  const rows = belowMin
+    ? fees
+    : fees;
+
   return `
+    ${warningHtml}
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">
-      本場出席人數：<strong>${cnt}</strong> 人，每人費用：<strong>${cnt > 0 ? Math.ceil(RATE/cnt) : '-'}</strong> 元
+      本場出席人數：<strong>${cnt}</strong> 人
+      ${cnt > 0 ? `，每人費用：<strong>${fees.find(f=>f.slotId)?.fee ?? '-'}</strong> 元` : ''}
     </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>姓名</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
         <tbody>
-          ${fees.map(f=>`<tr>
+          ${rows.map(f=>`<tr style="${f.belowMin && !f.slotId ? 'background:#fff8e1' : f.slotId ? '' : ''}">
             <td>${f.member}</td>
-            <td>${f.slotId?`<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`:'<span class="badge badge-gray">未報名</span>'}</td>
+            <td>${f.slotId
+              ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
+              : (f.belowMin
+                  ? '<span class="badge badge-amber">未出席(分攤)</span>'
+                  : '<span class="badge badge-gray">未報名</span>'
+                )
+            }</td>
             <td style="font-size:12px;color:var(--text-muted)">${f.breakdown}</td>
-            <td><strong>${f.fee>0?f.fee+' 元':'-'}</strong></td>
+            <td><strong style="color:${f.fee>0?'inherit':'var(--text-light)'}">${f.fee>0 ? f.fee+' 元' : '-'}</strong></td>
           </tr>`).join('')}
         </tbody>
       </table>
+    </div>
+    <div style="text-align:right;font-size:13px;color:var(--text-muted);margin-top:6px;">
+      本場應收合計：<strong>${totalFee} 元</strong>（場地費 ${RATE} 元）
     </div>`;
 }
 
