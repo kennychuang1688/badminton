@@ -647,20 +647,6 @@ function renderAttendance(dateStr) {
   const fees = computeFees(currentDateData, attendeeCount, members);
   const belowMin = attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
 
-  // Build history rows for past Saturdays
-  const histDates = getHistoryDates().filter(d => d < dateStr).slice(0, 5);
-  const histHtml = histDates.length === 0 ? '<div style="font-size:13px;color:var(--text-muted);padding:8px 0">尚無歷史記錄</div>' :
-    histDates.map(d => {
-      const hdata = getAttendDoc(d);
-      const hcnt  = computeHourCount(hdata, members);
-      const hfees = computeFees(hdata, hcnt, members);
-      const attendees = hfees.filter(f => f.slotId).map(f => `${f.member}(${f.fee}元)`).join('、');
-      return `<div style="font-size:12px;padding:5px 0;border-bottom:1px solid rgba(0,0,0,0.05)">
-        <span style="color:var(--text-muted);margin-right:8px">${fmtDisplay(d)}</span>
-        <span>${attendees || '無人報名'}</span>
-      </div>`;
-    }).join('');
-
   // Slot selector (not for guests)
   const slotSelectorHtml = isGuest ? `<div class="info-box">[覽] 遊客模式：僅能查看，無法修改出席。</div>` : `
     <div style="margin-bottom:12px;font-size:14px;font-weight:500;">選擇您的時段（${currentUser}）：</div>
@@ -721,10 +707,7 @@ function renderAttendance(dateStr) {
         ${myFeeHtml}
       </div>
     </div>
-    <div class="card" style="margin-top:0">
-      <div class="card-title" style="font-size:13px;color:var(--text-muted);margin-bottom:10px">最近歷史記錄</div>
-      ${histHtml}
-    </div>`;
+`;
 }
 
 function toggleMySlot(dateStr, slotId) {
@@ -1004,20 +987,7 @@ function loadFeeOverview() {
     </div>
     <div class="card">
       <div class="card-title">[費用] 公費帳戶概覽</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-        <div style="flex:1;min-width:90px;background:var(--primary-light);border-radius:var(--radius);padding:12px;text-align:center;">
-          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">總儲值</div>
-          <div style="font-size:20px;font-weight:700;color:var(--primary)">${totalPrepaid.toLocaleString()}</div>
-        </div>
-        <div style="flex:1;min-width:90px;background:var(--danger-light);border-radius:var(--radius);padding:12px;text-align:center;">
-          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">已繳球場費</div>
-          <div style="font-size:20px;font-weight:700;color:var(--danger)">${totalCourt.toLocaleString()}</div>
-        </div>
-        <div style="flex:1;min-width:90px;background:${fundBal>=0?'var(--primary-light)':'var(--danger-light)'};border-radius:var(--radius);padding:12px;text-align:center;">
-          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">公費餘額</div>
-          <div style="font-size:20px;font-weight:700;color:${fundBalColor}">${fundBal.toLocaleString()}</div>
-        </div>
-      </div>
+
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-muted)">收支記錄（由舊到新）</div>
       <div class="table-wrap">
         <table>
