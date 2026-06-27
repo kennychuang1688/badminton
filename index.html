@@ -403,11 +403,10 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
 <script>
 // ===========================================================
-// CONFIG - 部署時請填入 Firebase 資訊
+// CONFIG - Firebase
 // ===========================================================
-const FIREBASE_API_KEY  = 'YOUR_API_KEY';
-const FIREBASE_PROJECT  = 'YOUR_PROJECT_ID';
-const USE_CLOUD = FIREBASE_API_KEY !== 'YOUR_API_KEY';
+const FIREBASE_API_KEY  = 'AIzaSyAsEDJd0FRBThc8cumGfoUbcuA_rChIObo';
+const FIREBASE_PROJECT  = 'badminton-group-43ff7';
 
 // ===========================================================
 // INITIAL DATA
@@ -454,40 +453,191 @@ let pendingDeleteDate   = null;
 let pendingPrepaidMember = null;
 
 // ===========================================================
-// STORAGE (localStorage - swap with Firestore calls if cloud)
+// FIRESTORE HELPERS
 // ===========================================================
-function lsGet(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } }
-function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } }
+const FS_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
 
+async function fsGet(docPath) {
+  try {
+    const r = await fetch(`${FS_BASE}/${docPath}?key=${FIREBASE_API_KEY}`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    return fsDecodeDoc(d.fields);
+  } catch { return null; }
+}
+
+async function fsSet(docPath, data) {
+  try {
+    const fields = fsEncodeDoc(data);
+    const r = await fetch(
+      `${FS_BASE}/${docPath}?key=${FIREBASE_API_KEY}`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields }) }
+    );
+    return r.ok;
+  } catch { return false; }
+}
+
+async function fsDelete(docPath) {
+  try {
+    await fetch(`${FS_BASE}/${docPath}?key=${FIREBASE_API_KEY}`, { method: 'DELETE' });
+  } catch {}
+}
+
+async function fsList(collectionPath) {
+  try {
+    const r = await fetch(`${FS_BASE}/${collectionPath}?key=${FIREBASE_API_KEY}`);
+    if (!r.ok) return [];
+    const d = await r.json();
+    return (d.documents || []).map(doc => ({
+      id: doc.name.split('/').pop(),
+      data: fsDecodeDoc(doc.fields)
+    }));
+  } catch { return []; }
+}
+
+// Firestore value encoding/decoding
+function fsEncodeVal(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === 'boolean') return { booleanValue: v };
+  if (typeof v === 'number') return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (typeof v === 'string') return { stringValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(fsEncodeVal) } };
+  if (typeof v === 'object') return { mapValue: { fields: fsEncodeDoc(v) } };
+  return { stringValue: String(v) };
+}
+function fsEncodeDoc(obj) {
+  const fields = {};
+  for (const [k, v] of Object.entries(obj || {})) fields[k] = fsEncodeVal(v);
+  return fields;
+}
+function fsDecodeVal(v) {
+  if (!v) return null;
+  if ('nullValue' in v) return null;
+  if ('booleanValue' in v) return v.booleanValue;
+  if ('integerValue' in v) return parseInt(v.integerValue);
+  if ('doubleValue' in v) return v.doubleValue;
+  if ('stringValue' in v) return v.stringValue;
+  if ('arrayValue' in v) return (v.arrayValue.values || []).map(fsDecodeVal);
+  if ('mapValue' in v) return fsDecodeDoc(v.mapValue.fields);
+  return null;
+}
+function fsDecodeDoc(fields) {
+  if (!fields) return {};
+  const obj = {};
+  for (const [k, v] of Object.entries(fields)) obj[k] = fsDecodeVal(v);
+  return obj;
+}
+
+// ===========================================================
+// STORAGE (Firestore)
+// ===========================================================
+// In-memory cache to keep UI snappy
+const _cache = {};
+function lsGet(k) { return _cache[k] !== undefined ? _cache[k] : null; }
+function lsSet(k, v) { _cache[k] = v; return true; }
+
+async function cloudGet(k) {
+  const data = await fsGet(`app/${k}`);
+  if (data && data.v !== undefined) { _cache[k] = data.v; return data.v; }
+  return null;
+}
+async function cloudSet(k, v) {
+  _cache[k] = v;
+  return fsSet(`app/${k}`, { v });
+}
+async function cloudDelete(k) {
+  delete _cache[k];
+  return fsDelete(`app/${k}`);
+}
+
+async function getMembersConfigAsync() {
+  const v = await cloudGet('membersConfig');
+  return v || DEFAULT_MEMBERS_DATA.map(m => ({ ...m }));
+}
 function getMembersConfig() {
   return lsGet('membersConfig') || DEFAULT_MEMBERS_DATA.map(m => ({ ...m }));
 }
-function saveMembersConfig(cfg) { lsSet('membersConfig', cfg); }
+async function saveMembersConfig(cfg) {
+  lsSet('membersConfig', cfg);
+  await cloudSet('membersConfig', cfg);
+}
 
 function getMemberNames() {
-  // 遊客(user)不計入出席名單，只有 admin + member
   return getMembersConfig().filter(m => m.role !== 'guest').map(m => m.name);
 }
-function getAdminNames()  { return getMembersConfig().filter(m => m.role === 'admin').map(m => m.name); }
+function getAdminNames() {
+  return getMembersConfig().filter(m => m.role === 'admin').map(m => m.name);
+}
 
-function getAttendDoc(date)        { return lsGet(`att_${date}`) || {}; }
-function saveAttendDoc(date, data) { return lsSet(`att_${date}`, data); }
-function deleteAttendDoc(date)     { localStorage.removeItem(`att_${date}`); }
+async function getAttendDocAsync(date) {
+  const v = await cloudGet(`att_${date}`);
+  return v || {};
+}
+function getAttendDoc(date) { return lsGet(`att_${date}`) || {}; }
+async function saveAttendDoc(date, data) {
+  lsSet(`att_${date}`, data);
+  await cloudSet(`att_${date}`, data);
+}
+async function deleteAttendDoc(date) {
+  delete _cache[`att_${date}`];
+  await cloudDelete(`att_${date}`);
+}
 
 function getLogs() { return lsGet('logs') || []; }
-function addLog(entry) {
+async function addLog(entry) {
   const logs = getLogs();
   logs.unshift({ ...entry, ts: new Date().toISOString(), user: currentUser });
-  if (logs.length > 1000) logs.length = 1000;
+  if (logs.length > 200) logs.length = 200;
   lsSet('logs', logs);
+  await cloudSet('logs', logs);
 }
+
+function getFundLog() { return lsGet('fundLog') || []; }
+async function saveFundLog(log) {
+  lsSet('fundLog', log);
+  await cloudSet('fundLog', log);
+}
+async function addFundEntry(entry) {
+  const log = getFundLog();
+  log.unshift({ ...entry, ts: new Date().toISOString(), by: currentUser });
+  lsSet('fundLog', log);
+  await cloudSet('fundLog', log);
+}
+
+function getMemberHistory(name) { return lsGet('mhist_' + name) || []; }
+async function addMemberHistory(name, entry) {
+  const log = getMemberHistory(name);
+  log.push({ ...entry, ts: new Date().toISOString() });
+  lsSet('mhist_' + name, log);
+  await cloudSet('mhist_' + name, log);
+}
+
 function getHistoryDates() {
-  const keys = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i);
-    if (k && k.startsWith('att_')) keys.push(k.replace('att_', ''));
+  return Object.keys(_cache).filter(k => k.startsWith('att_')).map(k => k.replace('att_', '')).sort().reverse();
+}
+
+// Load all data from Firestore into cache on startup
+async function loadAllFromCloud() {
+  showToast('載入雲端資料中...', 'info');
+  const keys = ['membersConfig', 'logs', 'fundLog'];
+  // load member histories
+  getMembersConfig().filter(m => m.role !== 'guest').forEach(m => keys.push('mhist_' + m.name));
+
+  // load attendance docs (list collection)
+  const attDocs = await fsList('app');
+  for (const doc of attDocs) {
+    if (doc.id.startsWith('att_') || keys.includes(doc.id)) {
+      _cache[doc.id] = doc.data.v !== undefined ? doc.data.v : doc.data;
+    }
   }
-  return keys.sort().reverse();
+
+  // ensure membersConfig is loaded
+  if (!lsGet('membersConfig')) {
+    const mc = await cloudGet('membersConfig');
+    if (mc) lsSet('membersConfig', mc);
+  }
+  showToast('雲端資料載入完成', 'success');
 }
 
 // ===========================================================
@@ -642,12 +792,14 @@ function switchTab(id) {
 // ===========================================================
 // ATTENDANCE (self - member view)
 // ===========================================================
-function loadAttendance() {
+async function loadAttendance() {
   const dateStr = document.getElementById('attend-date').value;
   if (!dateStr) { showToast('請選擇日期', 'error'); return; }
   const d = new Date(dateStr + 'T00:00:00');
   if (d.getDay() !== 6) { showToast('請選擇週六日期', 'error'); return; }
-  currentDateData = getAttendDoc(dateStr);
+  // Try cloud first, fall back to cache
+  const cloudData = await cloudGet(`att_${dateStr}`);
+  currentDateData = cloudData || getAttendDoc(dateStr);
   renderAttendance(dateStr);
 }
 
@@ -736,14 +888,14 @@ function renderAttendance(dateStr) {
 `;
 }
 
-function toggleMySlot(dateStr, slotId) {
+async function toggleMySlot(dateStr, slotId) {
   if (slotId === null) {
     delete currentDateData[currentUser];
   } else {
     currentDateData[currentUser] = slotId;
   }
-  saveAttendDoc(dateStr, currentDateData);
-  addLog({ action: '修改自己出席時段', detail: `${dateStr} -> ${slotId || '不參加'}` });
+  await saveAttendDoc(dateStr, currentDateData);
+  await addLog({ action: '修改自己出席時段', detail: `${dateStr} -> ${slotId || '不參加'}` });
   showToast('已儲存', 'success');
 
   // Update slot selector checkboxes without full re-render
@@ -907,9 +1059,9 @@ function refreshAdminFee(dateStr) {
   if (card) card.innerHTML = `<div class="card-title">[費用] 費用計算</div>${renderFeeTable(hourCount, fees)}`;
 }
 
-function saveAdminAttendance(dateStr) {
-  saveAttendDoc(dateStr, adminDateData);
-  addLog({ action: '管理者修改出席記錄', detail: `${dateStr} -> ${JSON.stringify(adminDateData)}` });
+async function saveAdminAttendance(dateStr) {
+  await saveAttendDoc(dateStr, adminDateData);
+  await addLog({ action: '管理者修改出席記錄', detail: `${dateStr} -> ${JSON.stringify(adminDateData)}` });
   showToast('已儲存', 'success');
   renderAdminAttendance(dateStr);
 }
@@ -919,10 +1071,10 @@ function showDeleteAttendModal(dateStr) {
   document.getElementById('modal-delete-msg').textContent = `確定要刪除 ${fmtDisplay(dateStr)} 的所有出席記錄嗎？此操作無法復原。`;
   document.getElementById('modal-delete-attend').style.display = 'flex';
 }
-function confirmDeleteAttendance() {
+async function confirmDeleteAttendance() {
   if (!pendingDeleteDate) return;
-  deleteAttendDoc(pendingDeleteDate);
-  addLog({ action: '管理者刪除出席記錄', detail: pendingDeleteDate });
+  await deleteAttendDoc(pendingDeleteDate);
+  await addLog({ action: '管理者刪除出席記錄', detail: pendingDeleteDate });
   showToast(`${pendingDeleteDate} 記錄已刪除`, 'success');
   closeModal('modal-delete-attend');
   adminDateData = {};
@@ -935,6 +1087,7 @@ function confirmDeleteAttendance() {
 // ===========================================================
 function getFundLog() { return lsGet('fundLog') || []; }
 function saveFundLog(log) { lsSet('fundLog', log); }
+
 // Per-member prepaid history
 function getMemberHistory(name) { return lsGet('mhist_' + name) || []; }
 function addMemberHistory(name, entry) {
@@ -967,8 +1120,15 @@ function getPublicFundBalance() {
 // ===========================================================
 // FEE OVERVIEW
 // ===========================================================
-function loadFeeOverview() {
+async function loadFeeOverview() {
   const dateStr = document.getElementById('attend-date').value || fmt(nextSaturday(new Date()));
+  // Refresh from cloud
+  const cloudMc = await cloudGet('membersConfig');
+  if (cloudMc) lsSet('membersConfig', cloudMc);
+  const cloudFund = await cloudGet('fundLog');
+  if (cloudFund) lsSet('fundLog', cloudFund);
+  const cloudAtt = await cloudGet(`att_${dateStr}`);
+  if (cloudAtt) lsSet(`att_${dateStr}`, cloudAtt);
   const data = getAttendDoc(dateStr);
   const members = getMemberNames();
   const attendeeCount = computeHourCount(data, members);
@@ -1040,10 +1200,13 @@ function loadFeeOverview() {
 // ===========================================================
 // MEMBERS TAB (admin)
 // ===========================================================
-function loadMembersTab() {
+async function loadMembersTab() {
   document.getElementById('members-admin-box').style.display = isAdmin ? '' : 'none';
   document.getElementById('members-info-box').style.display  = isAdmin ? 'none' : '';
   document.getElementById('add-member-btn').style.display    = isAdmin ? '' : 'none';
+  // Refresh from cloud
+  const cloudMc = await cloudGet('membersConfig');
+  if (cloudMc) lsSet('membersConfig', cloudMc);
 
   const cfg = getMembersConfig().filter(m => m.role !== 'guest');
 
@@ -1116,7 +1279,7 @@ function updatePrepaidPreview() {
   }
 }
 
-function confirmUpdatePrepaid() {
+async function confirmUpdatePrepaid() {
   const amt = parseInt(document.getElementById('modal-new-prepaid').value) || 0;
   const type = document.getElementById('modal-prepaid-type').value;
   const note = document.getElementById('modal-prepaid-note').value.trim();
@@ -1127,16 +1290,16 @@ function confirmUpdatePrepaid() {
   const oldVal = m.prepaid || 0;
   if (type === 'add') {
     m.prepaid = oldVal + amt;
-    addMemberHistory(pendingPrepaidMember, { type: 'add', amount: amt, before: oldVal, after: m.prepaid, note });
-    addLog({ action: `${pendingPrepaidMember} 新增儲值`, detail: `+${amt.toLocaleString()} 元 (${oldVal.toLocaleString()} -> ${m.prepaid.toLocaleString()})${note?' 備註:'+note:''}` });
+    await addMemberHistory(pendingPrepaidMember, { type: 'add', amount: amt, before: oldVal, after: m.prepaid, note });
+    await addLog({ action: `${pendingPrepaidMember} 新增儲值`, detail: `+${amt.toLocaleString()} 元 (${oldVal.toLocaleString()} -> ${m.prepaid.toLocaleString()})${note?' 備註:'+note:''}` });
     showToast(`${pendingPrepaidMember} 已儲值 ${amt.toLocaleString()} 元`, 'success');
   } else {
     m.prepaid = oldVal - amt;
-    addMemberHistory(pendingPrepaidMember, { type: 'refund', amount: amt, before: oldVal, after: m.prepaid, note });
-    addLog({ action: `${pendingPrepaidMember} 退款`, detail: `-${amt.toLocaleString()} 元 (${oldVal.toLocaleString()} -> ${m.prepaid.toLocaleString()})${note?' 備註:'+note:''}` });
+    await addMemberHistory(pendingPrepaidMember, { type: 'refund', amount: amt, before: oldVal, after: m.prepaid, note });
+    await addLog({ action: `${pendingPrepaidMember} 退款`, detail: `-${amt.toLocaleString()} 元 (${oldVal.toLocaleString()} -> ${m.prepaid.toLocaleString()})${note?' 備註:'+note:''}` });
     showToast(`${pendingPrepaidMember} 已退款 ${amt.toLocaleString()} 元`, 'success');
   }
-  saveMembersConfig(cfg);
+  await saveMembersConfig(cfg);
   closeModal('modal-prepaid');
   loadMembersTab();
 }
@@ -1146,7 +1309,7 @@ function showAddMemberModal() {
   document.getElementById('modal-new-member-prepaid').value = 0;
   document.getElementById('modal-add-member').style.display = 'flex';
 }
-function confirmAddMember() {
+async function confirmAddMember() {
   const name = document.getElementById('modal-new-member-name').value.trim();
   const role = document.getElementById('modal-new-member-role').value;
   const prepaid = parseInt(document.getElementById('modal-new-member-prepaid').value) || 0;
@@ -1154,8 +1317,8 @@ function confirmAddMember() {
   const cfg = getMembersConfig();
   if (cfg.find(m => m.name === name)) { showToast('此姓名已存在', 'error'); return; }
   cfg.push({ name, role, prepaid, used: 0 });
-  saveMembersConfig(cfg);
-  addLog({ action: '新增成員', detail: `${name} (${role==='admin'?'管理者':'一般'})` });
+  await saveMembersConfig(cfg);
+  await addLog({ action: '新增成員', detail: `${name} (${role==='admin'?'管理者':'一般'})` });
   showToast(`${name} 已新增`, 'success');
   closeModal('modal-add-member');
   loadMembersTab();
@@ -1166,11 +1329,11 @@ function showRemoveMemberModal(name) {
   document.getElementById('modal-remove-msg').textContent = `確定要移除成員「${name}」嗎？其預繳記錄也會一併刪除。`;
   document.getElementById('modal-remove-member').style.display = 'flex';
 }
-function confirmRemoveMember() {
+async function confirmRemoveMember() {
   if (!pendingRemoveMember) return;
   const cfg = getMembersConfig().filter(m => m.name !== pendingRemoveMember);
-  saveMembersConfig(cfg);
-  addLog({ action: '移除成員', detail: pendingRemoveMember });
+  await saveMembersConfig(cfg);
+  await addLog({ action: '移除成員', detail: pendingRemoveMember });
   showToast(`${pendingRemoveMember} 已移除`, 'success');
   closeModal('modal-remove-member');
   pendingRemoveMember = null;
@@ -1211,8 +1374,10 @@ function loadHistory() {
 // ===========================================================
 // LOG (admin)
 // ===========================================================
-function loadLog() {
+async function loadLog() {
   if (!isAdmin) return;
+  const cloudLogs = await cloudGet('logs');
+  if (cloudLogs) lsSet('logs', cloudLogs);
   const logs = getLogs();
   const el = document.getElementById('log-content');
   if (!logs.length) { el.innerHTML = '<div class="loading">尚無操作記錄</div>'; return; }
@@ -1329,11 +1494,11 @@ function showCourtFeeModal() {
   document.getElementById('modal-court-note').value = '';
   document.getElementById('modal-court-fee').style.display = 'flex';
 }
-function confirmCourtFee() {
+async function confirmCourtFee() {
   const amount = parseInt(document.getElementById('modal-court-amount').value) || 0;
   const note = document.getElementById('modal-court-note').value.trim();
   if (amount <= 0) { showToast('請輸入金額', 'error'); return; }
-  addFundEntry({ type: 'court', amount, note });
+  await addFundEntry({ type: 'court', amount, note });
   addLog({ action: '設定繳球場季費', detail: `${amount.toLocaleString()} 元 ${note}` });
   showToast(`已記錄：季繳 ${amount.toLocaleString()} 元`, 'success');
   closeModal('modal-court-fee');
@@ -1385,23 +1550,25 @@ function selectAdminSlot(slotId) {
   noneEl.querySelector('.cb').textContent = noneChecked ? 'v' : '';
 }
 
-function confirmAdminSlotEdit() {
+async function confirmAdminSlotEdit() {
   if (!adminSlotMember || !adminSlotDate) return;
   if (adminSlotPending) {
     currentDateData[adminSlotMember] = adminSlotPending;
   } else {
     delete currentDateData[adminSlotMember];
   }
-  saveAttendDoc(adminSlotDate, currentDateData);
-  addLog({ action: `管理者修改 ${adminSlotMember} 出席`, detail: `${adminSlotDate} -> ${adminSlotPending || '不參加'}` });
+  await saveAttendDoc(adminSlotDate, currentDateData);
+  await addLog({ action: `管理者修改 ${adminSlotMember} 出席`, detail: `${adminSlotDate} -> ${adminSlotPending || '不參加'}` });
   showToast(`已更新 ${adminSlotMember} 的出席`, 'success');
   closeModal('modal-admin-slot');
   // Re-render the full attend page to reflect changes
   renderAttendance(adminSlotDate);
 }
 
-function showMemberHistModal(name) {
+async function showMemberHistModal(name) {
   document.getElementById('modal-hist-title').textContent = `${name} - 儲值歷史記錄`;
+  const cloudHist = await cloudGet('mhist_' + name);
+  if (cloudHist) lsSet('mhist_' + name, cloudHist);
   const log = getMemberHistory(name);
   const tbody = document.getElementById('modal-hist-tbody');
   if (log.length === 0) {
@@ -1429,7 +1596,10 @@ function showMemberHistModal(name) {
 // ===========================================================
 // BOOT
 // ===========================================================
-initLogin();
+(async () => {
+  await loadAllFromCloud();
+  initLogin();
+})();
 </script>
 </body>
 </html>
