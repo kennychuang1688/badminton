@@ -240,7 +240,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   <div id="page-members" class="page">
     <div id="members-admin-box" class="admin-box" style="display:none">[管] 管理者功能：修改預繳金額、查看所有成員餘額狀態</div>
     <div id="members-info-box" class="info-box" style="display:none">[覽] 此頁面顯示所有成員資訊（僅供查閱）</div>
-    <div class="grid-4" id="member-stats" style="margin-bottom:16px"></div>
+    <div id="member-stats" style="display:none"></div>
     <div class="card">
       <div class="section-header">
         <div class="card-title" style="margin-bottom:0">[編輯] 會員及儲值資訊</div>
@@ -710,14 +710,16 @@ function renderAttendance(dateStr) {
     <div class="card">
       <div class="card-title">[報名] ${fmtDisplay(dateStr)}</div>
       ${slotSelectorHtml}
-      ${warnHtml}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
-          <tbody>${tableRows}</tbody>
-        </table>
+      <div id="attend-fee-section">
+        ${warnHtml}
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+        ${myFeeHtml}
       </div>
-      ${myFeeHtml}
     </div>
     <div class="card" style="margin-top:0">
       <div class="card-title" style="font-size:13px;color:var(--text-muted);margin-bottom:10px">最近歷史記錄</div>
@@ -734,7 +736,8 @@ function toggleMySlot(dateStr, slotId) {
   saveAttendDoc(dateStr, currentDateData);
   addLog({ action: '修改自己出席時段', detail: `${dateStr} -> ${slotId || '不參加'}` });
   showToast('已儲存', 'success');
-  // refresh UI
+
+  // Update slot selector checkboxes without full re-render
   TIME_SLOTS.forEach(s => {
     const el = document.getElementById(`myslot_${s.id}`);
     if (el) {
@@ -747,6 +750,57 @@ function toggleMySlot(dateStr, slotId) {
   const noneChecked = !currentDateData[currentUser];
   noneEl.classList.toggle('checked', noneChecked);
   noneEl.querySelector('.cb').textContent = noneChecked ? 'v' : '';
+
+  // Immediately refresh the fee table below
+  refreshAttendFeeTable(dateStr);
+}
+
+function refreshAttendFeeTable(dateStr) {
+  const members = getMemberNames();
+  const attendeeCount = computeHourCount(currentDateData, members);
+  const fees = computeFees(currentDateData, attendeeCount, members);
+  const belowMin = attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
+
+  const warnHtml = belowMin ? `
+    <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
+      <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 費用暫由全體 ${members.length} 人均分
+    </div>` : '';
+
+  const tableRows = fees.map(f => {
+    const isMe = f.member === currentUser;
+    const rowStyle = isMe ? 'background:var(--primary-light)' : (f.belowMin && !f.slotId ? 'background:#fff8e1' : '');
+    const nameCell = isMe ? `<strong>> ${f.member}（你）</strong>` : f.member;
+    const slotCell = f.slotId
+      ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
+      : (f.belowMin ? '<span class="badge badge-amber">未出席(分攤)</span>' : '<span class="badge badge-gray">未報名</span>');
+    const feeCell = f.fee > 0
+      ? `<strong style="color:var(--primary-dark)">${f.fee} 元</strong>`
+      : '<span style="color:var(--text-light)">-</span>';
+    return `<tr style="${rowStyle}">
+      <td>${nameCell}</td><td>${slotCell}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${f.breakdown}</td>
+      <td>${feeCell}</td>
+    </tr>`;
+  }).join('');
+
+  const myFee = fees.find(f => f.member === currentUser);
+  const myFeeHtml = (myFee && myFee.fee > 0) ? `
+    <div style="margin-top:14px;padding:12px 16px;background:var(--primary-light);border-radius:8px;font-size:15px;">
+      您（${currentUser}）本週費用：<strong style="color:var(--primary-dark);font-size:18px;">${myFee.fee} 元</strong>
+      ${belowMin ? '<span style="font-size:12px;color:#7a5c00;margin-left:8px">（人數未滿，待確認）</span>' : ''}
+    </div>` : '';
+
+  const container = document.getElementById('attend-fee-section');
+  if (container) {
+    container.innerHTML = warnHtml + `
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+      ${myFeeHtml}`;
+  }
 }
 
 
@@ -898,30 +952,41 @@ function loadFeeOverview() {
   const fundBal      = totalPrepaid - totalCourt;
   const fundBalColor = fundBal >= 0 ? 'var(--primary)' : 'var(--danger)';
 
-  // Build per-member prepaid entries from membersConfig history
-  // We show each member's current prepaid as an "income" line
-  const cfg = getMembersConfig().filter(m => m.role !== 'guest' && (m.prepaid || 0) > 0);
-  const prepaidRows = cfg.map(m =>
-    `<div class="fee-row">
-      <span style="font-size:13px;color:var(--primary-dark)">${m.name} 儲值</span>
-      <span style="color:var(--primary);font-weight:600;">+${(m.prepaid||0).toLocaleString()} 元</span>
-    </div>`
-  ).join('');
-
-  const fundLog = getFundLog();
-  const courtRows = fundLog.length === 0 ? '' :
-    fundLog.slice(0,20).map(e => {
-      const label = e.type === 'court' ? '[繳球場費]' : '[場次扣款]';
-      const dateStr2 = new Date(e.ts).toLocaleDateString('zh-TW');
-      return `<div class="fee-row">
-        <span style="font-size:13px;">${label} ${dateStr2}${e.note ? ' '+e.note : ''}</span>
-        <span style="color:var(--danger);font-weight:600;">-${e.amount.toLocaleString()} 元</span>
-      </div>`;
-    }).join('');
-
-  const fundLogHtml = (prepaidRows || courtRows)
-    ? prepaidRows + (courtRows ? '<div style="border-top:1px dashed var(--border);margin:8px 0"></div>' + courtRows : '')
-    : '<div style="padding:12px;color:var(--text-muted);font-size:13px;">尚無記錄</div>';
+  // Build timeline entries: combine member prepaid (as income) + court fees (as expense)
+  // Each entry: { ts, type, label, amount, sign }
+  const fundEntries = [];
+  // Member prepaid shown as income entries (use a synthetic early ts so they sort first)
+  getMembersConfig().filter(m => m.role !== 'guest' && (m.prepaid || 0) !== 0).forEach(m => {
+    fundEntries.push({ ts: '2000-01-01T00:00:00.000Z', type: 'income', label: `${m.name} 儲值`, amount: m.prepaid || 0, sign: 1 });
+  });
+  // Court fee entries from log
+  getFundLog().forEach(e => {
+    const lbl = e.type === 'court' ? '[繳球場費]' : '[場次扣款]';
+    fundEntries.push({ ts: e.ts, type: 'expense', label: `${lbl}${e.note ? ' '+e.note : ''}`, amount: e.amount, sign: -1 });
+  });
+  // Sort oldest first (ascending)
+  fundEntries.sort((a, b) => a.ts.localeCompare(b.ts));
+  // Compute running balance
+  let running = 0;
+  const fundTableRows = fundEntries.length === 0
+    ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:16px">尚無記錄</td></tr>'
+    : fundEntries.map(e => {
+        running += e.sign * e.amount;
+        const dateLabel = e.ts.startsWith('2000') ? '-' : new Date(e.ts).toLocaleDateString('zh-TW');
+        const amtColor = e.sign > 0 ? 'var(--primary)' : 'var(--danger)';
+        const amtTxt = (e.sign > 0 ? '+' : '-') + e.amount.toLocaleString() + ' 元';
+        const balColor = running < 0 ? 'var(--danger)' : 'var(--primary)';
+        const typeBadge = e.sign > 0
+          ? '<span class="badge badge-green">入帳</span>'
+          : '<span class="badge badge-red">支出</span>';
+        return `<tr>
+          <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${dateLabel}</td>
+          <td>${typeBadge}</td>
+          <td style="font-size:13px">${e.label}</td>
+          <td style="font-weight:600;color:${amtColor};white-space:nowrap">${amtTxt}</td>
+          <td style="font-weight:700;color:${balColor};white-space:nowrap">${running.toLocaleString()} 元</td>
+        </tr>`;
+      }).join('');
 
   const adminCourtBtn = isAdmin ? `
     <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;">
@@ -939,23 +1004,26 @@ function loadFeeOverview() {
     </div>
     <div class="card">
       <div class="card-title">[費用] 公費帳戶概覽</div>
-      <div class="grid-3" style="margin-bottom:16px;">
-        <div class="stat-card">
-          <div class="stat-label">總儲值金額</div>
-          <div class="stat-value green">${totalPrepaid.toLocaleString()}</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+        <div style="flex:1;min-width:90px;background:var(--primary-light);border-radius:var(--radius);padding:12px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">總儲值</div>
+          <div style="font-size:20px;font-weight:700;color:var(--primary)">${totalPrepaid.toLocaleString()}</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">已繳球場費</div>
-          <div class="stat-value red">${totalCourt.toLocaleString()}</div>
+        <div style="flex:1;min-width:90px;background:var(--danger-light);border-radius:var(--radius);padding:12px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">已繳球場費</div>
+          <div style="font-size:20px;font-weight:700;color:var(--danger)">${totalCourt.toLocaleString()}</div>
         </div>
-        <div class="stat-card">
-          <div class="stat-label">公費餘額</div>
-          <div class="stat-value" style="color:${fundBalColor}">${fundBal.toLocaleString()}</div>
+        <div style="flex:1;min-width:90px;background:${fundBal>=0?'var(--primary-light)':'var(--danger-light)'};border-radius:var(--radius);padding:12px;text-align:center;">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px">公費餘額</div>
+          <div style="font-size:20px;font-weight:700;color:${fundBalColor}">${fundBal.toLocaleString()}</div>
         </div>
       </div>
-      <div class="fee-breakdown">
-        <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text-muted)">收支記錄</div>
-        ${fundLogHtml}
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-muted)">收支記錄（由舊到新）</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>日期</th><th>類型</th><th>說明</th><th>金額</th><th>餘額</th></tr></thead>
+          <tbody>${fundTableRows}</tbody>
+        </table>
       </div>
       ${adminCourtBtn}
     </div>`;
@@ -970,21 +1038,13 @@ function loadMembersTab() {
   document.getElementById('add-member-btn').style.display    = isAdmin ? '' : 'none';
 
   const cfg = getMembersConfig().filter(m => m.role !== 'guest');
-  const totalPrepaid = cfg.reduce((s,m)=>s+(m.prepaid||0),0);
-  const totalUsed    = cfg.reduce((s,m)=>s+(m.used||0),0);
-  const low          = cfg.filter(m=>(m.prepaid-m.used)<500).length;
-  const admins       = cfg.filter(m=>m.role==='admin').length;
 
-  document.getElementById('member-stats').innerHTML = `
-    <div class="stat-card"><div class="stat-label">總人數</div><div class="stat-value purple">${cfg.length}</div></div>
-    <div class="stat-card"><div class="stat-label">管理者</div><div class="stat-value purple">${admins}</div></div>
-    <div class="stat-card"><div class="stat-label">總預繳</div><div class="stat-value green">${totalPrepaid.toLocaleString()}</div></div>
-    <div class="stat-card"><div class="stat-label">餘額不足</div><div class="stat-value red">${low} 人</div></div>`;
+  document.getElementById('member-stats').innerHTML = '';
 
   document.getElementById('members-tbody').innerHTML = cfg.map(m => {
     const bal = (m.prepaid||0) - (m.used||0);
-    const status = bal < 0 ? 'badge-red' : bal < 500 ? 'badge-amber' : 'badge-green';
-    const statusTxt = bal < 0 ? '欠費' : bal < 500 ? '即將不足' : '充足';
+    const status = bal <= 0 ? 'badge-red' : bal < 500 ? 'badge-amber' : 'badge-green';
+    const statusTxt = bal <= 0 ? '欠費/清零' : bal < 500 ? '即將不足' : '充足';
     const roleLabel = m.role==='admin' ? '<span class="badge badge-admin">管理者</span>' : '<span class="badge badge-gray">一般</span>';
     const editBtns = isAdmin ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
     const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">移除</button>` : '-';
@@ -993,7 +1053,7 @@ function loadMembersTab() {
       <td>${roleLabel}</td>
       <td>${(m.prepaid||0).toLocaleString()} 元${editBtns}</td>
       <td>${(m.used||0).toLocaleString()} 元</td>
-      <td><strong style="color:${bal<0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong></td>
+      <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong></td>
       <td><span class="badge ${status}">${statusTxt}</span></td>
       <td>${delBtn}</td>
     </tr>`;
