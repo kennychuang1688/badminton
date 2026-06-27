@@ -779,7 +779,12 @@ function nextSaturday(from) {
   d.setDate(d.getDate() + diff);
   return d;
 }
-function fmt(d) { return d.toISOString().split('T')[0]; }
+function fmt(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 function fmtDisplay(s) {
   const d = new Date(s + 'T00:00:00');
   return `${s} (週${'日一二三四五六'[d.getDay()]})`;
