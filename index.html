@@ -202,7 +202,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
     <div class="header-sub">每週六 10:00 ~ 12:00 ｜ 每場2小時費用 1200元</div>
   </div>
   <div class="header-right">
-    <span class="admin-badge" id="role-badge" style="display:none">[管] 管理者</span>
+    <span class="admin-badge" id="role-badge" style="display:none">管理權限</span>
     <div class="user-badge" id="current-user-badge" onclick="logout()">登出</div>
   </div>
 </div>
@@ -1166,18 +1166,18 @@ async function loadFeeOverview() {
   getMembersConfig().filter(m => m.role !== 'guest' && (m.prepaid || 0) !== 0).forEach(m => {
     fundEntries.push({ ts: '2000-01-01T00:00:00.000Z', type: 'income', label: `${m.name} 儲值`, amount: m.prepaid || 0, sign: 1 });
   });
-  // Court fee entries from log
-  getFundLog().forEach(e => {
+  // Court fee entries from log - track original index for deletion
+  getFundLog().forEach((e, i) => {
     const lbl = e.type === 'court' ? '[繳球場費]' : '[場次扣款]';
-    fundEntries.push({ ts: e.ts, type: 'expense', label: `${lbl}${e.note ? ' '+e.note : ''}`, amount: e.amount, sign: -1 });
+    fundEntries.push({ ts: e.ts, type: 'expense', label: `${lbl}${e.note ? ' '+e.note : ''}`, amount: e.amount, sign: -1, fundIdx: i });
   });
   // Sort oldest first (ascending)
   fundEntries.sort((a, b) => a.ts.localeCompare(b.ts));
   // Compute running balance
   let running = 0;
   const fundTableRows = fundEntries.length === 0
-    ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:16px">尚無記錄</td></tr>'
-    : fundEntries.map(e => {
+    ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:16px">尚無記錄</td></tr>'
+    : fundEntries.map((e, idx) => {
         running += e.sign * e.amount;
         const dateLabel = e.ts.startsWith('2000') ? '-' : new Date(e.ts).toLocaleDateString('zh-TW');
         const amtColor = e.sign > 0 ? 'var(--primary)' : 'var(--danger)';
@@ -1186,12 +1186,17 @@ async function loadFeeOverview() {
         const typeBadge = e.sign > 0
           ? '<span class="badge badge-green">入帳</span>'
           : '<span class="badge badge-red">支出</span>';
+        // Only expense (court fee) entries can be deleted by admin; income entries cannot
+        const delBtn = (isAdmin && e.type === 'expense')
+          ? `<button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px;" onclick="deleteFundEntry(${e.fundIdx})">刪除</button>`
+          : '';
         return `<tr>
           <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">${dateLabel}</td>
           <td>${typeBadge}</td>
           <td style="font-size:13px">${e.label}</td>
           <td style="font-weight:600;color:${amtColor};white-space:nowrap">${amtTxt}</td>
           <td style="font-weight:700;color:${balColor};white-space:nowrap">${running.toLocaleString()} 元</td>
+          <td>${delBtn}</td>
         </tr>`;
       }).join('');
 
@@ -1207,7 +1212,7 @@ async function loadFeeOverview() {
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-muted)">收支記錄（由舊到新）</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>日期</th><th>類型</th><th>說明</th><th>金額</th><th>餘額</th></tr></thead>
+          <thead><tr><th>日期</th><th>類型</th><th>說明</th><th>金額</th><th>餘額</th><th></th></tr></thead>
           <tbody>${fundTableRows}</tbody>
         </table>
       </div>
@@ -1596,7 +1601,7 @@ async function showMemberHistModal(name) {
   const log = getMemberHistory(name);
   const tbody = document.getElementById('modal-hist-tbody');
   if (log.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:16px">尚無記錄</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:16px">尚無記錄</td></tr>';
   } else {
     tbody.innerHTML = log.map(e => {
       const isAdd = e.type === 'add';
@@ -1615,6 +1620,21 @@ async function showMemberHistModal(name) {
     }).join('');
   }
   document.getElementById('modal-member-hist').style.display = 'flex';
+}
+
+async function deleteFundEntry(idx) {
+  if (!isAdmin) return;
+  const log = getFundLog();
+  if (idx < 0 || idx >= log.length) return;
+  const entry = log[idx];
+  const label = entry.note ? entry.note : entry.type;
+  if (!confirm(`確定要刪除此支出記錄？\n${new Date(entry.ts).toLocaleDateString('zh-TW')} - ${entry.amount.toLocaleString()} 元 - ${label}`)) return;
+  log.splice(idx, 1);
+  lsSet('fundLog', log);
+  await cloudSet('fundLog', log);
+  await addLog({ action: '刪除公費支出記錄', detail: `${label} ${entry.amount.toLocaleString()} 元` });
+  showToast('已刪除支出記錄', 'success');
+  loadFeeOverview();
 }
 
 // ===========================================================
