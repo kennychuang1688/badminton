@@ -248,7 +248,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>姓名</th><th>角色</th><th>預繳金額</th><th>已使用</th><th>剩餘</th><th>操作</th></tr></thead>
+          <thead><tr><th>姓名</th><th>會員身份</th><th>剩餘</th><th>操作</th></tr></thead>
           <tbody id="members-tbody"></tbody>
         </table>
       </div>
@@ -699,7 +699,7 @@ function renderAttendance(dateStr) {
   const feeSummaryHtml = `
     <div class="fee-breakdown" style="margin-top:12px;">
       <div class="fee-row"><span>場地費用（本場）</span><span>${RATE} 元</span></div>
-      <div class="fee-row total"><span>本場分攤合計</span><span>${sessionTotal} 元</span></div>
+      <div class="fee-row total"><span>本場分攤合計（使用無條件進位法）</span><span>${sessionTotal} 元</span></div>
     </div>`;
 
   el.innerHTML = `
@@ -794,7 +794,7 @@ function refreshAttendFeeTable(dateStr) {
   const feeSumHtml = `
     <div class="fee-breakdown" style="margin-top:12px;">
       <div class="fee-row"><span>場地費用（本場）</span><span>${RATE} 元</span></div>
-      <div class="fee-row total"><span>本場分攤合計</span><span>${sessionTotal2} 元</span></div>
+      <div class="fee-row total"><span>本場分攤合計（使用無條件進位法）</span><span>${sessionTotal2} 元</span></div>
     </div>`;
 
   const container = document.getElementById('attend-fee-section');
@@ -1040,9 +1040,7 @@ function loadMembersTab() {
     return `<tr>
       <td><strong>${m.name}</strong></td>
       <td>${roleLabel}</td>
-      <td>${(m.prepaid||0).toLocaleString()} 元${editBtns}</td>
-      <td>${(m.used||0).toLocaleString()} 元</td>
-      <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong></td>
+      <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong>${editBtns}</td>
       <td>${delBtn}</td>
     </tr>`;
   }).join('');
