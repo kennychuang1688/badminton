@@ -1108,16 +1108,9 @@ async function confirmDeleteAttendance() {
 }
 
 // ===========================================================
+// ===========================================================
 // PUBLIC FUND (公費) STORAGE
 // ===========================================================
-function getFundLog() { return lsGet('fundLog') || []; }
-function saveFundLog(log) { lsSet('fundLog', log); }
-
-function addFundEntry(entry) {
-  const log = getFundLog();
-  log.unshift({ ...entry, ts: new Date().toISOString(), by: currentUser });
-  lsSet('fundLog', log);
-}
 
 // Compute total prepaid from all members
 function getTotalPrepaid() {
