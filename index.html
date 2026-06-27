@@ -406,7 +406,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 // CONFIG - Firebase
 // ===========================================================
 const FIREBASE_API_KEY  = 'AIzaSyAsEDJd0FRBThc8cumGfoUbcuA_rChIObo';
-const FIREBASE_PROJECT  = 'badminton-group-43ff7';
+const FIREBASE_PROJECT  = 'badminton-group-43ff7-b5f72';
 
 // ===========================================================
 // INITIAL DATA
@@ -460,10 +460,15 @@ const FS_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT
 async function fsGet(docPath) {
   try {
     const r = await fetch(`${FS_BASE}/${docPath}?key=${FIREBASE_API_KEY}`);
-    if (!r.ok) return null;
+    if (r.status === 404) return null; // doc doesn't exist yet, not an error
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({}));
+      console.warn('[fsGet]', r.status, docPath, err?.error?.message || '');
+      return null;
+    }
     const d = await r.json();
     return fsDecodeDoc(d.fields);
-  } catch { return null; }
+  } catch(e) { console.warn('[fsGet exception]', docPath, e); return null; }
 }
 
 async function fsSet(docPath, data) {
@@ -474,8 +479,13 @@ async function fsSet(docPath, data) {
       { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields }) }
     );
-    return r.ok;
-  } catch { return false; }
+    if (!r.ok) {
+      const err = await r.json().catch(()=>({}));
+      console.error('[fsSet FAILED]', r.status, docPath, err?.error?.message || '');
+      return false;
+    }
+    return true;
+  } catch(e) { console.error('[fsSet exception]', docPath, e); return false; }
 }
 
 async function fsDelete(docPath) {
