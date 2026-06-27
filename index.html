@@ -620,22 +620,10 @@ function getHistoryDates() {
 // Load all data from Firestore into cache on startup
 async function loadAllFromCloud() {
   showToast('載入雲端資料中...', 'info');
-  const keys = ['membersConfig', 'logs', 'fundLog'];
-  // load member histories
-  getMembersConfig().filter(m => m.role !== 'guest').forEach(m => keys.push('mhist_' + m.name));
-
-  // load attendance docs (list collection)
-  const attDocs = await fsList('app');
-  for (const doc of attDocs) {
-    if (doc.id.startsWith('att_') || keys.includes(doc.id)) {
-      _cache[doc.id] = doc.data.v !== undefined ? doc.data.v : doc.data;
-    }
-  }
-
-  // ensure membersConfig is loaded
-  if (!lsGet('membersConfig')) {
-    const mc = await cloudGet('membersConfig');
-    if (mc) lsSet('membersConfig', mc);
+  // Load ALL documents from the app collection
+  const allDocs = await fsList('app');
+  for (const doc of allDocs) {
+    _cache[doc.id] = doc.data.v !== undefined ? doc.data.v : doc.data;
   }
   showToast('雲端資料載入完成', 'success');
 }
@@ -1316,7 +1304,13 @@ async function confirmAddMember() {
   if (!name) { showToast('請輸入姓名', 'error'); return; }
   const cfg = getMembersConfig();
   if (cfg.find(m => m.name === name)) { showToast('此姓名已存在', 'error'); return; }
-  cfg.push({ name, role, prepaid, used: 0 });
+  // Insert before the guest (user) entry to keep it last
+  const guestIdx = cfg.findIndex(m => m.role === 'guest');
+  if (guestIdx >= 0) {
+    cfg.splice(guestIdx, 0, { name, role, prepaid, used: 0 });
+  } else {
+    cfg.push({ name, role, prepaid, used: 0 });
+  }
   await saveMembersConfig(cfg);
   await addLog({ action: '新增成員', detail: `${name} (${role==='admin'?'管理者':'一般'})` });
   showToast(`${name} 已新增`, 'success');
