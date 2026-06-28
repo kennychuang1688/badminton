@@ -218,16 +218,6 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
   <!-- Tab: Attend -->
   <div id="page-attend" class="page active">
-    <div class="card">
-      <div class="section-header">
-        <div class="section-title">選擇週六日期</div>
-      </div>
-      <div class="date-row">
-        <input type="date" id="attend-date" />
-        <button class="btn btn-secondary" onclick="jumpNextSaturday()">下週六</button>
-        <button class="btn btn-primary" onclick="loadAttendance()">載入</button>
-      </div>
-    </div>
     <div id="attend-content"><div class="loading">請選擇日期後載入</div></div>
   </div>
 
@@ -762,20 +752,13 @@ function injectAdminTabs() {
 // ===========================================================
 // APP INIT
 // ===========================================================
-function initApp() {
+async function initApp() {
   const sat = nextSaturday(new Date());
   const satStr = fmt(sat);
   // 不得早於 SCHEDULE_START
   const useDate = satStr >= SCHEDULE_START ? satStr : SCHEDULE_START;
-  document.getElementById('attend-date').value = useDate;
-  // 限制最早日期
-  document.getElementById('attend-date').min = SCHEDULE_START;
-  loadAttendance();
-  // 遊客隱藏報名操作提示
-  if (isGuest) {
-    const tabs = document.getElementById('main-tabs');
-    // 隱藏費用總覽 tab 不隱藏（遊客可看）
-  }
+  currentDateData = await cloudGet(`att_${useDate}`) || getAttendDoc(useDate);
+  renderAttendance(useDate);
 }
 
 function nextSaturday(from) {
@@ -796,8 +779,17 @@ function fmtDisplay(s) {
   return `${s} (週${'日一二三四五六'[d.getDay()]})`;
 }
 function jumpNextSaturday() {
-  document.getElementById('attend-date').value = fmt(nextSaturday(new Date()));
-  loadAttendance();
+  const el = document.getElementById('attend-date');
+  const nextSat = fmt(nextSaturday(new Date()));
+  if (el) { el.value = nextSat; loadAttendance(); }
+  else {
+    // card not yet rendered: set via temp variable and re-render
+    const tempDate = nextSat;
+    (async () => {
+      currentDateData = await cloudGet(`att_${tempDate}`) || getAttendDoc(tempDate);
+      renderAttendance(tempDate);
+    })();
+  }
 }
 function jumpAdminNextSaturday() {
   document.getElementById('admin-attend-date').value = fmt(nextSaturday(new Date()));
@@ -824,7 +816,8 @@ function switchTab(id) {
 // ATTENDANCE (self - member view)
 // ===========================================================
 async function loadAttendance() {
-  const dateStr = document.getElementById('attend-date').value;
+  const el = document.getElementById('attend-date');
+  const dateStr = el ? el.value : '';
   if (!dateStr) { showToast('請選擇日期', 'error'); return; }
   const d = new Date(dateStr + 'T00:00:00');
   if (d.getDay() !== 6) { showToast('請選擇週六日期', 'error'); return; }
@@ -934,7 +927,10 @@ function renderAttendance(dateStr) {
 
   el.innerHTML = `
     <div class="card">
-      <div class="card-title">[報名] ${fmtDisplay(dateStr)}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <input type="date" id="attend-date" value="${dateStr}" min="${SCHEDULE_START}" onchange="loadAttendance()" style="color:#1a4fad;font-weight:600;" />
+        <span style="font-size:15px;font-weight:600;color:var(--text-muted)">${fmtDisplay(dateStr)}</span>
+      </div>
       ${slotSelectorHtml}
       <div id="attend-fee-section">
         ${warnHtml}
