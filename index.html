@@ -856,7 +856,7 @@ function renderAttendance(dateStr) {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 2);
   const cutoffStr = fmt(cutoff);
-  const selfLocked = !isAdmin && dateStr <= cutoffStr;
+  const selfLocked = dateStr <= cutoffStr;
 
   const slotSelectorHtml = isGuest ? `<div class="info-box">[覽] 遊客模式：僅能查看，無法修改出席。</div>`
     : selfLocked ? `
