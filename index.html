@@ -1240,7 +1240,7 @@ async function loadMembersTab() {
     const bal = (m.prepaid||0) - (m.used||0);
     const ROLE_TITLES = { 'June': '財務', 'Frank': '公關', 'Kenny': '網管' };
     const roleLabel = m.role === 'admin'
-      ? `<span class="badge badge-admin">${ROLE_TITLES[m.name] || '管理者'}</span>`
+      ? `<span class="badge badge-green">${ROLE_TITLES[m.name] || '管理者'}</span>`
       : m.role === 'guest'
         ? '<span class="badge badge-gray">遊客</span>'
         : '<span class="badge badge-green">會員</span>';
