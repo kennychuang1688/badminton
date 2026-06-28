@@ -679,7 +679,7 @@ async function loadAllFromCloud() {
 // ===========================================================
 function initLogin() {
   const sel = document.getElementById('login-name');
-  getMembersConfig().forEach(m => {
+  getMembersConfig().filter(m => !m.inactive).forEach(m => {
     const o = document.createElement('option');
     const suffix = m.role === 'guest' ? ' [遊客]' : '';
     o.value = m.name; o.textContent = m.name + suffix;
