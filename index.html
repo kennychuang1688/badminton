@@ -249,7 +249,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>姓名</th><th>會員身份</th><th>剩餘儲值金額</th><th>歷史記錄</th><th id="members-op-th" style="display:none">操作</th></tr></thead>
+          <thead><tr><th>姓名</th><th>剩餘儲值金額</th><th>歷史記錄</th><th>會員身份</th><th id="members-op-th" style="display:none">操作</th></tr></thead>
           <tbody id="members-tbody"></tbody>
         </table>
       </div>
@@ -1313,9 +1313,9 @@ async function loadMembersTab() {
     const histBtn = `<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showMemberHistModal('${m.name}')">記錄</button>`;
     return `<tr>
       <td><strong>${m.name}</strong></td>
-      <td>${roleLabel}</td>
       <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong>${editBtns}</td>
       <td>${histBtn}</td>
+      <td>${roleLabel}</td>
       ${isAdmin ? `<td>${delBtn}</td>` : ''}
     </tr>`;
   }).join('');
