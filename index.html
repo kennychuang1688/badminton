@@ -840,16 +840,20 @@ function renderAttendance(dateStr) {
   const mySlot = currentDateData[currentUser];
   const attendeeCount = computeHourCount(currentDateData, members);
 
-  // 週三起無人報名 → 強制全員均分
+  // 判斷強制全員均分的時機
+  // 條件：人數不足（0人 或 不滿4人），且今天已到週一(5天前)含以後
   const today = new Date(); today.setHours(0,0,0,0);
   const satDate = new Date(dateStr + 'T00:00:00');
-  const wedBefore = new Date(satDate); wedBefore.setDate(satDate.getDate() - 3); // 週六前3天=週三
-  const forceAllSplit = attendeeCount === 0 && today >= wedBefore;
+  const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5); // 週六前5天=週一
+  const friBefore = new Date(satDate); friBefore.setDate(satDate.getDate() - 1); // 週六前1天=週五
+  const needsAllSplit = (attendeeCount === 0 || (attendeeCount > 0 && attendeeCount < MIN_PLAYERS)) && today >= monBefore;
+  const forceAllSplit = needsAllSplit; // 週一起就均分
+  const urgentSplit = needsAllSplit && today >= friBefore; // 週五起加黃底
 
   const fees = forceAllSplit
     ? computeFeesForceAll(members)
     : computeFees(currentDateData, attendeeCount, members);
-  const belowMin = attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
+  const belowMin = !forceAllSplit && attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
 
   // Slot selector (not for guests)
   // 鎖定規則：今天2天前（含）的場次，一般成員不能自行修改
@@ -885,22 +889,19 @@ function renderAttendance(dateStr) {
 
   // Below-min warning / force-all warning
   const warnHtml = forceAllSplit ? `
-    <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
-      <strong>[!] 本週六尚無人報名（已過週三）</strong> - 場地費用由全體 ${members.length} 人均分
-    </div>`
-  : belowMin ? `
-    <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
-      <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 目前人數尚未滿4人需分攤
+    <div style="background:${urgentSplit ? '#fff3cd' : '#f5f5f5'};border-left:3px solid ${urgentSplit ? '#f0ad4e' : '#aaa'};border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:${urgentSplit ? '#7a5c00' : '#555'};">
+      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${attendeeCount} 人）</strong> - 場地費用由全體 ${members.length} 人均分
     </div>` : '';
 
   // Merged table: 成員 / 時段 / 費用明細 / 應付 / (管理者編輯)
   const tableRows = fees.map(f => {
     const isMe = f.member === currentUser;
-    const rowStyle = isMe ? 'background:var(--primary-light)' : (f.belowMin && !f.slotId ? 'background:#fff8e1' : '');
+    const forceRow = f.forceAll;
+    const rowStyle = isMe ? 'background:var(--primary-light)' : (forceRow && urgentSplit ? 'background:#fff8e1' : '');
     const nameCell = isMe ? `<strong>> ${f.member}（你）</strong>` : f.member;
     const slotCell = f.slotId
       ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
-      : (f.belowMin ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
+      : (forceRow ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
     const feeCell = f.fee > 0
       ? `<strong style="color:var(--primary-dark)">${f.fee} 元</strong>`
       : '<span style="color:var(--text-light)">-</span>';
@@ -983,27 +984,27 @@ function refreshAttendFeeTable(dateStr) {
   const attendeeCount = computeHourCount(currentDateData, members);
   const today = new Date(); today.setHours(0,0,0,0);
   const satDate = new Date(dateStr + 'T00:00:00');
-  const wedBefore = new Date(satDate); wedBefore.setDate(satDate.getDate() - 3);
-  const forceAllSplit = attendeeCount === 0 && today >= wedBefore;
+  const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5);
+  const friBefore = new Date(satDate); friBefore.setDate(satDate.getDate() - 1);
+  const needsAllSplit = (attendeeCount === 0 || (attendeeCount > 0 && attendeeCount < MIN_PLAYERS)) && today >= monBefore;
+  const forceAllSplit = needsAllSplit;
+  const urgentSplit = needsAllSplit && today >= friBefore;
   const fees = forceAllSplit ? computeFeesForceAll(members) : computeFees(currentDateData, attendeeCount, members);
-  const belowMin = attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
+  const belowMin = !forceAllSplit && attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
 
   const warnHtml = forceAllSplit ? `
-    <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
-      <strong>[!] 本週六尚無人報名（已過週三）</strong> - 場地費用由全體 ${members.length} 人均分
-    </div>`
-  : belowMin ? `
-    <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
-      <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 目前人數尚未滿4人需分攤
+    <div style="background:${urgentSplit ? '#fff3cd' : '#f5f5f5'};border-left:3px solid ${urgentSplit ? '#f0ad4e' : '#aaa'};border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:${urgentSplit ? '#7a5c00' : '#555'};">
+      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${attendeeCount} 人）</strong> - 場地費用由全體 ${members.length} 人均分
     </div>` : '';
 
   const tableRows = fees.map(f => {
     const isMe = f.member === currentUser;
-    const rowStyle = isMe ? 'background:var(--primary-light)' : (f.belowMin && !f.slotId ? 'background:#fff8e1' : '');
+    const forceRow = f.forceAll;
+    const rowStyle = isMe ? 'background:var(--primary-light)' : (forceRow && urgentSplit ? 'background:#fff8e1' : '');
     const nameCell = isMe ? `<strong>> ${f.member}（你）</strong>` : f.member;
     const slotCell = f.slotId
       ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
-      : (f.belowMin ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
+      : (forceRow ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
     const feeCell = f.fee > 0
       ? `<strong style="color:var(--primary-dark)">${f.fee} 元</strong>`
       : '<span style="color:var(--text-light)">-</span>';
