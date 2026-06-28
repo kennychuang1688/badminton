@@ -834,7 +834,7 @@ async function loadAttendance() {
 function renderAttendance(dateStr) {
   // 只計算在此週六當天或之前已加入、且尚未離開的成員
   const members = getMembersConfig().filter(m =>
-    m.role !== 'guest' && !m.inactive &&
+    m.role !== 'guest' &&
     (m.joinDate || SCHEDULE_START) <= dateStr &&
     (!m.leaveDate || m.leaveDate > dateStr)
   ).map(m => m.name);
@@ -984,7 +984,7 @@ async function toggleMySlot(dateStr, slotId) {
 
 function refreshAttendFeeTable(dateStr) {
   const members = getMembersConfig().filter(m =>
-    m.role !== 'guest' && !m.inactive &&
+    m.role !== 'guest' &&
     (m.joinDate || SCHEDULE_START) <= dateStr &&
     (!m.leaveDate || m.leaveDate > dateStr)
   ).map(m => m.name);
@@ -1285,7 +1285,8 @@ async function loadMembersTab() {
   const cloudMc = await cloudGet('membersConfig');
   if (cloudMc) lsSet('membersConfig', cloudMc);
 
-  const cfg = getMembersConfig().filter(m => m.role !== 'guest' && !m.inactive);
+  const cfg = getMembersConfig().filter(m => m.role !== 'guest' && !m.inactive); // 顯示用（只顯示現役）
+  const allCfgForCalc = getMembersConfig().filter(m => m.role !== 'guest'); // 計算用（含已離開）
   const members = getMemberNames();
   const todayStr = fmt(new Date());
 
@@ -1293,7 +1294,7 @@ async function loadMembersTab() {
   // 以每週六為單位，從 SCHEDULE_START 開始逐週掃描
   const sessionDeductions = {};
   // 包含所有曾經是會員的人（含已離開），以便正確計算歷史扣款
-  getMembersConfig().filter(m => m.role !== 'guest').forEach(m => sessionDeductions[m.name] = 0);
+  allCfgForCalc.forEach(m => sessionDeductions[m.name] = 0);
 
   // 產生從 SCHEDULE_START 到今天所有的週六
   const allSaturdays = [];
@@ -1310,10 +1311,8 @@ async function loadMembersTab() {
     const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5);
     const todayD = new Date(todayStr + 'T00:00:00');
 
-    // 只計算在此週六當天或之前已加入、且尚未離開的會員
-    const allCfg = getMembersConfig();
-    const activeMembers = allCfg.filter(m =>
-      m.role !== 'guest' &&
+    // 只計算在此週六當天或之前已加入、且尚未離開的會員（含已離開的歷史成員）
+    const activeMembers = allCfgForCalc.filter(m =>
       (m.joinDate || SCHEDULE_START) <= d &&
       (!m.leaveDate || m.leaveDate > d)
     ).map(m => m.name);
@@ -1337,19 +1336,29 @@ async function loadMembersTab() {
 
   document.getElementById('member-stats').innerHTML = '';
 
-  document.getElementById('members-tbody').innerHTML = cfg.map(m => {
+  // 已離開但有欠款的成員也要顯示
+  const inactiveWithDebt = allCfgForCalc.filter(m =>
+    m.inactive && (sessionDeductions[m.name] || 0) > 0
+  );
+  const displayList = [...cfg, ...inactiveWithDebt];
+
+  document.getElementById('members-tbody').innerHTML = displayList.map(m => {
     const totalDeducted = sessionDeductions[m.name] || 0;
     const bal = (m.prepaid||0) - totalDeducted;
     const ROLE_TITLES = { 'June': '財務', 'Frank': '公關', 'Kenny': '網管' };
-    const roleLabel = m.role === 'admin'
-      ? `<span class="badge badge-green">${ROLE_TITLES[m.name] || '管理者'}</span>`
-      : m.role === 'guest'
-        ? '<span class="badge badge-gray">遊客</span>'
-        : '<span class="badge badge-green">會員</span>';
-    const editBtns = isAdmin ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
-    const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">- 移除會員帳號</button>` : '';
+    const isInactive = !!m.inactive;
+    const roleLabel = isInactive
+      ? `<span class="badge badge-gray">已離開（${m.leaveDate||''}）</span>`
+      : m.role === 'admin'
+        ? `<span class="badge badge-green">${ROLE_TITLES[m.name] || '管理者'}</span>`
+        : m.role === 'guest'
+          ? '<span class="badge badge-gray">遊客</span>'
+          : '<span class="badge badge-green">會員</span>';
+    const editBtns = (isAdmin && !isInactive) ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
+    const delBtn = (isAdmin && !isInactive) ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">- 移除會員帳號</button>` : '';
     const histBtn = `<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showMemberHistModal('${m.name}')">記錄</button>`;
-    return `<tr>
+    const rowStyle = isInactive ? 'opacity:0.6;' : '';
+    return `<tr style="${rowStyle}">
       <td><strong>${m.name}</strong></td>
       <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong>${editBtns}</td>
       <td>${histBtn}</td>
