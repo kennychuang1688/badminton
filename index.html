@@ -210,8 +210,8 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 <!-- Main -->
 <div class="container">
   <div class="tabs" id="main-tabs">
-    <button class="tab active" onclick="switchTab('attend')">[報名] 本週報名</button>
-    <button class="tab" onclick="switchTab('fee')">[費用] 費用總覽</button>
+    <button class="tab active" onclick="switchTab('attend')">[報名]</button>
+    <button class="tab" onclick="switchTab('fee')">[公費資訊]</button>
     <!-- Additional tabs injected by JS -->
   </div>
 
@@ -243,7 +243,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
     <div id="member-stats" style="display:none"></div>
     <div class="card">
       <div class="section-header">
-        <div class="card-title" style="margin-bottom:0">[編輯] 會員及儲值資訊</div>
+        <div class="card-title" style="margin-bottom:0">[儲值資訊]</div>
         <button id="add-member-btn" class="btn btn-admin btn-sm" onclick="showAddMemberModal()" style="display:none">＋ 新增成員</button>
       </div>
       <div class="table-wrap">
@@ -259,7 +259,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   <div id="page-log" class="page">
     <div class="admin-box">[管] 管理者功能：所有人的操作都記錄在此</div>
     <div class="card">
-      <div class="card-title">[日誌] 所有操作記錄</div>
+      <div class="card-title">[操作記錄]</div>
       <div id="log-content"><div class="loading">載入中...</div></div>
     </div>
   </div>
@@ -741,19 +741,19 @@ function logout() {
 function injectAdminTabs() {
   const tabs = document.getElementById('main-tabs');
 
-  // 管理者：顯示「[編輯] 會員及儲值資訊」
-  // 一般使用者及遊客：顯示「會員及儲值資訊」
+  // 管理者：顯示「[儲值資訊]」
+  // 一般使用者及遊客：顯示「[儲值資訊]」
   const memberBtn = document.createElement('button');
   memberBtn.className = 'tab';
-  memberBtn.textContent = isAdmin ? '[編輯] 會員及儲值資訊' : '會員及儲值資訊';
+  memberBtn.textContent = '[儲值資訊]';
   memberBtn.onclick = () => switchTab('members');
-  tabs.appendChild(memberBtn);
+  tabs.insertBefore(memberBtn, tabs.children[1]);
 
   // 日誌：管理者 + 一般會員都可以看（遊客不行）
   if (!isGuest) {
     const logBtn = document.createElement('button');
     logBtn.className = isAdmin ? 'tab admin-tab' : 'tab';
-    logBtn.textContent = '[日誌] 操作記錄';
+    logBtn.textContent = '[操作記錄]';
     logBtn.onclick = () => switchTab('log');
     tabs.appendChild(logBtn);
   }
