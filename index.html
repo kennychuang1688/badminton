@@ -890,7 +890,6 @@ function renderAttendance(dateStr) {
   const myFeeHtml = (!isGuest && myFee && myFee.fee > 0) ? `
     <div style="margin-top:14px;padding:12px 16px;background:var(--primary-light);border-radius:8px;font-size:15px;">
       您（${currentUser}）本週費用：<strong style="color:var(--primary-dark);font-size:18px;">${myFee.fee} 元</strong>
-      ${belowMin ? '<span style="font-size:12px;color:#7a5c00;margin-left:8px">（人數未滿，待確認）</span>' : ''}
     </div>` : '';
 
   const sessionTotal = fees.reduce((s, f) => s + f.fee, 0);
@@ -985,7 +984,6 @@ function refreshAttendFeeTable(dateStr) {
   const myFeeHtml = (myFee && myFee.fee > 0) ? `
     <div style="margin-top:14px;padding:12px 16px;background:var(--primary-light);border-radius:8px;font-size:15px;">
       您（${currentUser}）本週費用：<strong style="color:var(--primary-dark);font-size:18px;">${myFee.fee} 元</strong>
-      ${belowMin ? '<span style="font-size:12px;color:#7a5c00;margin-left:8px">（人數未滿，待確認）</span>' : ''}
     </div>` : '';
 
   const sessionTotal2 = fees.reduce((s, f) => s + f.fee, 0);
