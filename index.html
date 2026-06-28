@@ -850,6 +850,7 @@ function renderAttendance(dateStr) {
   const forceAllSplit = needsAllSplit; // 週一起就均分
   const urgentSplit = needsAllSplit && today >= friBefore; // 週五起加黃底
 
+  console.log('[debug] forceAllSplit=', forceAllSplit, 'attendeeCount=', attendeeCount, 'currentDateData=', JSON.stringify(currentDateData));
   const fees = forceAllSplit
     ? computeFeesForceAll(members, currentDateData)
     : computeFees(currentDateData, attendeeCount, members);
