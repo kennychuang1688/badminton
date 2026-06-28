@@ -1750,12 +1750,41 @@ async function showMemberHistModal(name) {
     });
   });
 
-  // 場次扣款（今天以前含今天）
-  getHistoryDates().filter(d => d <= todayStr).forEach(d => {
+  // 場次扣款：逐週掃描所有週六（含無人報名的週），與 loadMembersTab 邏輯一致
+  const allCfgHist = getMembersConfig().filter(m => m.role !== 'guest');
+  const allSatsHist = [];
+  const startH = new Date(SCHEDULE_START + 'T00:00:00');
+  const todayH = new Date(todayStr + 'T00:00:00');
+  let curH = new Date(startH);
+  while (curH <= todayH) { allSatsHist.push(fmt(curH)); curH.setDate(curH.getDate() + 7); }
+
+  allSatsHist.forEach(d => {
+    // 此週六該成員是否在籍
+    const mCfg = allCfgHist.find(x => x.name === name);
+    if (!mCfg) return;
+    const joinOk = (mCfg.joinDate || SCHEDULE_START) <= d;
+    const leaveOk = !mCfg.leaveDate || mCfg.leaveDate > d;
+    if (!joinOk || !leaveOk) return;
+
+    const satDate = new Date(d + 'T00:00:00');
+    const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5);
+    const activeMembers = allCfgHist.filter(m =>
+      (m.joinDate || SCHEDULE_START) <= d &&
+      (!m.leaveDate || m.leaveDate > d)
+    ).map(m => m.name);
+    if (activeMembers.length === 0) return;
+
     const data = getAttendDoc(d);
-    const hc = computeHourCount(data, members);
-    if (hc === 0) return;
-    const fees = computeFees(data, hc, members);
+    const hc = computeHourCount(data, activeMembers);
+    const needsAllSplit = (hc === 0 || hc < MIN_PLAYERS) && todayH >= monBefore;
+    let fees;
+    if (needsAllSplit) {
+      fees = computeFeesForceAll(activeMembers, data);
+    } else if (hc > 0) {
+      fees = computeFees(data, hc, activeMembers);
+    } else {
+      return;
+    }
     const f = fees.find(x => x.member === name);
     if (f && f.fee > 0) {
       entries.push({
