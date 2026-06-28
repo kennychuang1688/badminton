@@ -405,18 +405,18 @@ const DEFAULT_PASSWORD = 'temp';
 
 // 角色：admin / member / guest
 const DEFAULT_MEMBERS_DATA = [
-  { name: 'June',   role: 'admin',  prepaid: 0, used: 0 },
-  { name: 'Frank',  role: 'admin',  prepaid: 0, used: 0 },
-  { name: 'Kenny',  role: 'admin',  prepaid: 0, used: 0 },
-  { name: '瓦勒司', role: 'member', prepaid: 0, used: 0 },
-  { name: '沛修',   role: 'member', prepaid: 0, used: 0 },
-  { name: 'Darnell',role: 'member', prepaid: 0, used: 0 },
-  { name: 'PC',     role: 'member', prepaid: 0, used: 0 },
-  { name: 'Issac',  role: 'member', prepaid: 0, used: 0 },
-  { name: '玉晶',   role: 'member', prepaid: 0, used: 0 },
-  { name: '波波',   role: 'member', prepaid: 0, used: 0 },
-  { name: 'Frodo',  role: 'member', prepaid: 0, used: 0 },
-  { name: 'user',   role: 'guest',  prepaid: 0, used: 0 },
+  { name: 'June',   role: 'admin',  prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: 'Frank',  role: 'admin',  prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: 'Kenny',  role: 'admin',  prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: '瓦勒司', role: 'member', prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: '沛修',   role: 'member', prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: 'Darnell',role: 'member', prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: 'PC',     role: 'member', prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: 'Issac',  role: 'member', prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: '玉晶',   role: 'member', prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: '波波',   role: 'member', prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: 'Frodo',  role: 'member', prepaid: 0, used: 0, joinDate: SCHEDULE_START },
+  { name: 'user',   role: 'guest',  prepaid: 0, used: 0, joinDate: SCHEDULE_START },
 ];
 
 // 只剩一個時段
@@ -556,7 +556,10 @@ async function getMembersConfigAsync() {
   return v || DEFAULT_MEMBERS_DATA.map(m => ({ ...m }));
 }
 function getMembersConfig() {
-  return lsGet('membersConfig') || DEFAULT_MEMBERS_DATA.map(m => ({ ...m }));
+  const cfg = lsGet('membersConfig') || DEFAULT_MEMBERS_DATA.map(m => ({ ...m }));
+  // 補上舊有成員缺少的 joinDate
+  cfg.forEach(m => { if (!m.joinDate) m.joinDate = SCHEDULE_START; });
+  return cfg;
 }
 async function saveMembersConfig(cfg) {
   lsSet('membersConfig', cfg);
@@ -564,7 +567,7 @@ async function saveMembersConfig(cfg) {
 }
 
 function getMemberNames() {
-  return getMembersConfig().filter(m => m.role !== 'guest').map(m => m.name);
+  return getMembersConfig().filter(m => m.role !== 'guest' && !m.inactive).map(m => m.name);
 }
 function getAdminNames() {
   return getMembersConfig().filter(m => m.role === 'admin').map(m => m.name);
@@ -1153,7 +1156,7 @@ async function confirmDeleteAttendance() {
 
 // Compute total prepaid from all members
 function getTotalPrepaid() {
-  return getMembersConfig().filter(m => m.role !== 'guest').reduce((s, m) => s + (m.prepaid || 0), 0);
+  return getMembersConfig().filter(m => m.role !== 'guest' && !m.inactive).reduce((s, m) => s + (m.prepaid || 0), 0);
 }
 // Compute total court fees paid
 function getTotalCourtFees() {
@@ -1272,14 +1275,15 @@ async function loadMembersTab() {
   const cloudMc = await cloudGet('membersConfig');
   if (cloudMc) lsSet('membersConfig', cloudMc);
 
-  const cfg = getMembersConfig().filter(m => m.role !== 'guest');
+  const cfg = getMembersConfig().filter(m => m.role !== 'guest' && !m.inactive);
   const members = getMemberNames();
   const todayStr = fmt(new Date());
 
   // 計算每位成員在「今天以前（含今天）所有場次」的累計費用
   // 以每週六為單位，從 SCHEDULE_START 開始逐週掃描
   const sessionDeductions = {};
-  members.forEach(n => sessionDeductions[n] = 0);
+  // 包含所有曾經是會員的人（含已離開），以便正確計算歷史扣款
+  getMembersConfig().filter(m => m.role !== 'guest').forEach(m => sessionDeductions[m.name] = 0);
 
   // 產生從 SCHEDULE_START 到今天所有的週六
   const allSaturdays = [];
@@ -1294,18 +1298,27 @@ async function loadMembersTab() {
   for (const d of allSaturdays) {
     const satDate = new Date(d + 'T00:00:00');
     const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5);
-    const data = getAttendDoc(d);
-    const hc = computeHourCount(data, members);
-    // 週一後人數不足(含0人) → 強制全員均分
     const todayD = new Date(todayStr + 'T00:00:00');
+
+    // 只計算在此週六當天或之前已加入、且尚未離開的會員
+    const allCfg = getMembersConfig();
+    const activeMembers = allCfg.filter(m =>
+      m.role !== 'guest' &&
+      (m.joinDate || SCHEDULE_START) <= d &&
+      (!m.leaveDate || m.leaveDate > d)
+    ).map(m => m.name);
+    if (activeMembers.length === 0) continue;
+
+    const data = getAttendDoc(d);
+    const hc = computeHourCount(data, activeMembers);
     const needsAllSplit = (hc === 0 || hc < MIN_PLAYERS) && todayD >= monBefore;
     let fees;
     if (needsAllSplit) {
-      fees = computeFeesForceAll(members, data);
+      fees = computeFeesForceAll(activeMembers, data);
     } else if (hc > 0) {
-      fees = computeFees(data, hc, members);
+      fees = computeFees(data, hc, activeMembers);
     } else {
-      continue; // 週一前無人報名，不收費
+      continue;
     }
     fees.forEach(f => {
       if (f.fee > 0) sessionDeductions[f.member] = (sessionDeductions[f.member] || 0) + f.fee;
@@ -1421,10 +1434,11 @@ async function confirmAddMember() {
   if (cfg.find(m => m.name === name)) { showToast('此姓名已存在', 'error'); return; }
   // Insert before the guest (user) entry to keep it last
   const guestIdx = cfg.findIndex(m => m.role === 'guest');
+  const joinDate = fmt(new Date());
   if (guestIdx >= 0) {
-    cfg.splice(guestIdx, 0, { name, role, prepaid, used: 0 });
+    cfg.splice(guestIdx, 0, { name, role, prepaid, used: 0, joinDate });
   } else {
-    cfg.push({ name, role, prepaid, used: 0 });
+    cfg.push({ name, role, prepaid, used: 0, joinDate });
   }
   await saveMembersConfig(cfg);
   await addLog({ action: '新增成員', detail: `${name} (${role==='admin'?'管理者':'一般'})` });
@@ -1440,9 +1454,14 @@ function showRemoveMemberModal(name) {
 }
 async function confirmRemoveMember() {
   if (!pendingRemoveMember) return;
-  const cfg = getMembersConfig().filter(m => m.name !== pendingRemoveMember);
+  const cfg = getMembersConfig();
+  const m = cfg.find(x => x.name === pendingRemoveMember);
+  if (m) {
+    m.inactive = true;
+    m.leaveDate = fmt(new Date());
+  }
   await saveMembersConfig(cfg);
-  await addLog({ action: '移除成員', detail: pendingRemoveMember });
+  await addLog({ action: '移除成員', detail: `${pendingRemoveMember}（離開日期：${fmt(new Date())}）` });
   showToast(`${pendingRemoveMember} 已移除`, 'success');
   closeModal('modal-remove-member');
   pendingRemoveMember = null;
