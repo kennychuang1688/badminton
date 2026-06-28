@@ -1231,11 +1231,29 @@ async function loadMembersTab() {
   if (cloudMc) lsSet('membersConfig', cloudMc);
 
   const cfg = getMembersConfig().filter(m => m.role !== 'guest');
+  const members = getMemberNames();
+  const todayStr = fmt(new Date());
+
+  // 計算每位成員在「今天以前（含今天）所有場次」的累計費用
+  const sessionDeductions = {};
+  members.forEach(n => sessionDeductions[n] = 0);
+
+  const pastDates = getHistoryDates().filter(d => d <= todayStr);
+  for (const d of pastDates) {
+    const data = getAttendDoc(d);
+    const hc = computeHourCount(data, members);
+    if (hc === 0) continue; // 無人出席，不收費
+    const fees = computeFees(data, hc, members);
+    fees.forEach(f => {
+      if (f.fee > 0) sessionDeductions[f.member] = (sessionDeductions[f.member] || 0) + f.fee;
+    });
+  }
 
   document.getElementById('member-stats').innerHTML = '';
 
   document.getElementById('members-tbody').innerHTML = cfg.map(m => {
-    const bal = (m.prepaid||0) - (m.used||0);
+    const totalDeducted = sessionDeductions[m.name] || 0;
+    const bal = (m.prepaid||0) - totalDeducted;
     const ROLE_TITLES = { 'June': '財務', 'Frank': '公關', 'Kenny': '網管' };
     const roleLabel = m.role === 'admin'
       ? `<span class="badge badge-green">${ROLE_TITLES[m.name] || '管理者'}</span>`
@@ -1245,10 +1263,11 @@ async function loadMembersTab() {
     const editBtns = isAdmin ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
     const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">- 移除會員帳號</button>` : '';
     const histBtn = `<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showMemberHistModal('${m.name}')">記錄</button>`;
+    const deductNote = totalDeducted > 0 ? `<span style="font-size:12px;color:var(--text-muted);margin-left:6px">（已扣 ${totalDeducted} 元）</span>` : '';
     return `<tr>
       <td><strong>${m.name}</strong></td>
       <td>${roleLabel}</td>
-      <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong>${editBtns}</td>
+      <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong>${deductNote}${editBtns}</td>
       <td>${histBtn}</td>
       ${isAdmin ? `<td>${delBtn}</td>` : ''}
     </tr>`;
