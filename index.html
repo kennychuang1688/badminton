@@ -749,10 +749,10 @@ function injectAdminTabs() {
   memberBtn.onclick = () => switchTab('members');
   tabs.insertBefore(memberBtn, tabs.children[1]);
 
-  // 日誌：管理者 + 一般會員都可以看（遊客不行）
-  if (!isGuest) {
+  // 日誌：僅管理者可以看
+  if (isAdmin) {
     const logBtn = document.createElement('button');
-    logBtn.className = isAdmin ? 'tab admin-tab' : 'tab';
+    logBtn.className = 'tab admin-tab';
     logBtn.textContent = '[操作記錄]';
     logBtn.onclick = () => switchTab('log');
     tabs.appendChild(logBtn);
