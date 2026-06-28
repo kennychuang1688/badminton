@@ -1491,21 +1491,16 @@ async function loadLog() {
 // ===========================================================
 function computeFeesForceAll(members, data) {
   // 人數不足，強制全員均分，但保留已報名者的時段標記
-  data = data || {};
+  data = data || currentDateData || {};
   const perPerson = Math.ceil(RATE / members.length);
-  console.log('[forceAll] data=', JSON.stringify(data));
-  return members.map(member => {
-    const slotId = data[member] || null;
-    console.log('[forceAll]', member, '->', slotId);
-    return {
-      member,
-      slotId,
-      fee: perPerson,
-      breakdown: `${RATE} / ${members.length}人(全員均分) = ${perPerson}元`,
-      belowMin: false,
-      forceAll: true
-    };
-  });
+  return members.map(member => ({
+    member,
+    slotId: data[member] || null,
+    fee: perPerson,
+    breakdown: `${RATE} / ${members.length}人(全員均分) = ${perPerson}元`,
+    belowMin: false,
+    forceAll: true
+  }));
 }
 
 function computeHourCount(data, members) {
