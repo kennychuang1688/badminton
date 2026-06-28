@@ -70,6 +70,7 @@ body { font-family: 'Segoe UI', -apple-system, sans-serif; background: var(--bg)
 /* Form */
 input, select { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; font-size: 14px; color: var(--text); background: var(--surface); outline: none; transition: border-color 0.2s; }
 input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(29,158,117,0.1); }
+input[type="date"] { color: #1a4fad; font-weight: 600; }
 
 /* Buttons */
 .btn { padding: 8px 16px; border-radius: 8px; border: none; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
@@ -238,8 +239,8 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
   <!-- Tab: Members -->
   <div id="page-members" class="page">
-    <div id="members-admin-box" class="admin-box" style="display:none">[管] 管理者功能：修改預繳金額、查看所有成員餘額狀態</div>
-    <div id="members-info-box" class="info-box" style="display:none">[覽] 此頁面顯示所有成員資訊（僅供查閱）</div>
+    <div id="members-admin-box" style="display:none"></div>
+    <div id="members-info-box" class="info-box" style="display:none"></div>
     <div id="member-stats" style="display:none"></div>
     <div class="card">
       <div class="section-header">
@@ -248,7 +249,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>姓名</th><th>會員身份</th><th>剩餘儲值金額</th><th>歷史記錄</th><th>操作</th></tr></thead>
+          <thead><tr><th>姓名</th><th>會員身份</th><th>剩餘儲值金額</th><th>歷史記錄</th><th id="members-op-th" style="display:none">操作</th></tr></thead>
           <tbody id="members-tbody"></tbody>
         </table>
       </div>
@@ -257,7 +258,6 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
 
   <!-- Tab: Log (admin) -->
   <div id="page-log" class="page">
-    <div class="admin-box">[管] 管理者功能：所有人的操作都記錄在此</div>
     <div class="card">
       <div class="card-title">[操作記錄]</div>
       <div id="log-content"><div class="loading">載入中...</div></div>
@@ -858,7 +858,7 @@ function renderAttendance(dateStr) {
   // Below-min warning
   const warnHtml = belowMin ? `
     <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
-      <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 費用暫由全體 ${members.length} 人均分
+      <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 目前人數尚未滿4人需分攤
     </div>` : '';
 
   // Merged table: 成員 / 時段 / 費用明細 / 應付 / (管理者編輯)
@@ -868,7 +868,7 @@ function renderAttendance(dateStr) {
     const nameCell = isMe ? `<strong>> ${f.member}（你）</strong>` : f.member;
     const slotCell = f.slotId
       ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
-      : (f.belowMin ? '<span class="badge badge-amber">未出席(分攤)</span>' : '<span class="badge badge-gray">未報名</span>');
+      : (f.belowMin ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
     const feeCell = f.fee > 0
       ? `<strong style="color:var(--primary-dark)">${f.fee} 元</strong>`
       : '<span style="color:var(--text-light)">-</span>';
@@ -955,7 +955,7 @@ function refreshAttendFeeTable(dateStr) {
 
   const warnHtml = belowMin ? `
     <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
-      <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 費用暫由全體 ${members.length} 人均分
+      <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 目前人數尚未滿4人需分攤
     </div>` : '';
 
   const tableRows = fees.map(f => {
@@ -964,7 +964,7 @@ function refreshAttendFeeTable(dateStr) {
     const nameCell = isMe ? `<strong>> ${f.member}（你）</strong>` : f.member;
     const slotCell = f.slotId
       ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
-      : (f.belowMin ? '<span class="badge badge-amber">未出席(分攤)</span>' : '<span class="badge badge-gray">未報名</span>');
+      : (f.belowMin ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
     const feeCell = f.fee > 0
       ? `<strong style="color:var(--primary-dark)">${f.fee} 元</strong>`
       : '<span style="color:var(--text-light)">-</span>';
@@ -1226,6 +1226,8 @@ async function loadMembersTab() {
   document.getElementById('members-admin-box').style.display = isAdmin ? '' : 'none';
   document.getElementById('members-info-box').style.display  = isAdmin ? 'none' : '';
   document.getElementById('add-member-btn').style.display    = isAdmin ? '' : 'none';
+  const opTh = document.getElementById('members-op-th');
+  if (opTh) opTh.style.display = isAdmin ? '' : 'none';
   // Refresh from cloud
   const cloudMc = await cloudGet('membersConfig');
   if (cloudMc) lsSet('membersConfig', cloudMc);
@@ -1243,14 +1245,14 @@ async function loadMembersTab() {
         ? '<span class="badge badge-gray">遊客</span>'
         : '<span class="badge badge-green">會員</span>';
     const editBtns = isAdmin ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
-    const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">- 移除會員帳號</button>` : '-';
+    const delBtn = isAdmin ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">- 移除會員帳號</button>` : '';
     const histBtn = `<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showMemberHistModal('${m.name}')">記錄</button>`;
     return `<tr>
       <td><strong>${m.name}</strong></td>
       <td>${roleLabel}</td>
       <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong>${editBtns}</td>
       <td>${histBtn}</td>
-      <td>${delBtn}</td>
+      ${isAdmin ? `<td>${delBtn}</td>` : ''}
     </tr>`;
   }).join('');
 }
