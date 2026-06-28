@@ -1160,8 +1160,15 @@ async function loadFeeOverview() {
   // Each entry: { ts, type, label, amount, sign }
   const fundEntries = [];
   // Member prepaid shown as income entries (use a synthetic early ts so they sort first)
-  getMembersConfig().filter(m => m.role !== 'guest' && (m.prepaid || 0) !== 0).forEach(m => {
-    fundEntries.push({ ts: '2000-01-01T00:00:00.000Z', type: 'income', label: `${m.name} 儲值`, amount: m.prepaid || 0, sign: 1 });
+  // 用 mhist_ 取得每筆儲值的實際時間
+  getMembersConfig().filter(m => m.role !== 'guest').forEach(m => {
+    const hist = getMemberHistory(m.name);
+    hist.filter(e => e.type === 'add').forEach(e => {
+      fundEntries.push({ ts: e.ts, type: 'income', label: `${m.name} 儲值`, amount: e.amount, sign: 1 });
+    });
+    hist.filter(e => e.type === 'refund').forEach(e => {
+      fundEntries.push({ ts: e.ts, type: 'income', label: `${m.name} 退款`, amount: e.amount, sign: -1 });
+    });
   });
   // Court fee entries from log - track original index for deletion
   getFundLog().forEach((e, i) => {
@@ -1176,7 +1183,7 @@ async function loadFeeOverview() {
     ? '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:16px">尚無記錄</td></tr>'
     : fundEntries.map((e, idx) => {
         running += e.sign * e.amount;
-        const dateLabel = e.ts.startsWith('2000') ? '-' : new Date(e.ts).toLocaleDateString('zh-TW');
+        const dateLabel = new Date(e.ts).toLocaleDateString('zh-TW');
         const amtColor = e.sign > 0 ? 'var(--primary)' : 'var(--danger)';
         const amtTxt = (e.sign > 0 ? '+' : '-') + e.amount.toLocaleString() + ' 元';
         const balColor = running < 0 ? 'var(--danger)' : 'var(--primary)';
