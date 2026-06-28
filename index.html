@@ -899,6 +899,13 @@ function renderAttendance(dateStr) {
       <div class="fee-row total"><span>本場分攤合計（使用無條件進位法）</span><span>${sessionTotal} 元</span></div>
     </div>`;
 
+  const settleBtn = (currentUser === 'Kenny' && attendeeCount > 0) ? `
+    <div style="margin-top:14px;border-top:1px solid var(--border);padding-top:14px;">
+      <button class="btn btn-admin" onclick="confirmSettleFees('${dateStr}')">
+        ✅ 結算本場費用（從出席者儲值扣款）
+      </button>
+    </div>` : '';
+
   el.innerHTML = `
     <div class="card">
       <div class="card-title">[報名] ${fmtDisplay(dateStr)}</div>
@@ -913,6 +920,7 @@ function renderAttendance(dateStr) {
         </div>
         ${myFeeHtml}
         ${feeSummaryHtml}
+        ${settleBtn}
       </div>
     </div>
 `;
@@ -1501,6 +1509,44 @@ function renderFeeTable(attendeeCount, fees) {
     <div style="text-align:right;font-size:13px;color:var(--text-muted);margin-top:6px;">
       本場應收合計：<strong>${totalFee} 元</strong>（場地費 ${RATE} 元）
     </div>`;
+}
+
+// ===========================================================
+// SETTLE FEES (Kenny only)
+// ===========================================================
+async function confirmSettleFees(dateStr) {
+  const members = getMemberNames();
+  const attendeeCount = computeHourCount(currentDateData, members);
+  const fees = computeFees(currentDateData, attendeeCount, members);
+  const payers = fees.filter(f => f.fee > 0);
+  if (payers.length === 0) { showToast('本場無需扣款', 'error'); return; }
+
+  const lines = payers.map(f => `  ${f.member}：${f.fee} 元`).join('
+');
+  if (!confirm(`確定結算 ${fmtDisplay(dateStr)} 場次費用？
+
+將從以下成員儲值扣款：
+${lines}`)) return;
+
+  const cfg = getMembersConfig();
+  for (const f of payers) {
+    const m = cfg.find(x => x.name === f.member);
+    if (!m) continue;
+    const before = m.prepaid || 0;
+    m.prepaid = before - f.fee;
+    await addMemberHistory(f.member, {
+      type: 'refund',
+      amount: f.fee,
+      before,
+      after: m.prepaid,
+      note: `${dateStr} 場次費用`
+    });
+  }
+  await saveMembersConfig(cfg);
+  await addFundEntry({ type: 'session', amount: fees.reduce((s,f)=>s+f.fee,0), note: `${dateStr} 場次收費` });
+  await addLog({ action: '結算場次費用', detail: `${dateStr} 共 ${payers.length} 人，各 ${payers[0]?.fee} 元` });
+  showToast(`已完成結算，共 ${payers.length} 人各扣 ${payers[0]?.fee} 元`, 'success');
+  renderAttendance(dateStr);
 }
 
 // ===========================================================
