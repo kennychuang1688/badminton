@@ -843,7 +843,26 @@ function renderAttendance(dateStr) {
   const belowMin = attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
 
   // Slot selector (not for guests)
-  const slotSelectorHtml = isGuest ? `<div class="info-box">[覽] 遊客模式：僅能查看，無法修改出席。</div>` : `
+  // 鎖定規則：今天2天前（含）的場次，一般成員不能自行修改
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 2);
+  const cutoffStr = fmt(cutoff);
+  const selfLocked = !isAdmin && dateStr <= cutoffStr;
+
+  const slotSelectorHtml = isGuest ? `<div class="info-box">[覽] 遊客模式：僅能查看，無法修改出席。</div>`
+    : selfLocked ? `
+    <div style="margin-bottom:12px;font-size:14px;font-weight:500;">選擇您的時段（${currentUser}）：</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;" id="my-slots">
+      ${TIME_SLOTS.map(s => `
+        <div class="slot-check ${mySlot === s.id ? 'checked' : ''} locked" id="myslot_${s.id}">
+          <div class="cb">${mySlot === s.id ? 'v' : ''}</div> ${s.label}
+        </div>`).join('')}
+      <div class="slot-check ${!mySlot ? 'checked' : ''} locked" id="myslot_none">
+        <div class="cb">${!mySlot ? 'v' : ''}</div> 本週不參加
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">⛔ 此場次已超過修改期限（僅管理員可編輯）</div>`
+    : `
     <div style="margin-bottom:12px;font-size:14px;font-weight:500;">選擇您的時段（${currentUser}）：</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;" id="my-slots">
       ${TIME_SLOTS.map(s => `
