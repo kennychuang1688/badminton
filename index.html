@@ -839,7 +839,16 @@ function renderAttendance(dateStr) {
   const el = document.getElementById('attend-content');
   const mySlot = currentDateData[currentUser];
   const attendeeCount = computeHourCount(currentDateData, members);
-  const fees = computeFees(currentDateData, attendeeCount, members);
+
+  // 週三起無人報名 → 強制全員均分
+  const today = new Date(); today.setHours(0,0,0,0);
+  const satDate = new Date(dateStr + 'T00:00:00');
+  const wedBefore = new Date(satDate); wedBefore.setDate(satDate.getDate() - 3); // 週六前3天=週三
+  const forceAllSplit = attendeeCount === 0 && today >= wedBefore;
+
+  const fees = forceAllSplit
+    ? computeFeesForceAll(members)
+    : computeFees(currentDateData, attendeeCount, members);
   const belowMin = attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
 
   // Slot selector (not for guests)
@@ -874,8 +883,12 @@ function renderAttendance(dateStr) {
       </div>
     </div>`;
 
-  // Below-min warning
-  const warnHtml = belowMin ? `
+  // Below-min warning / force-all warning
+  const warnHtml = forceAllSplit ? `
+    <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
+      <strong>[!] 本週六尚無人報名（已過週三）</strong> - 場地費用由全體 ${members.length} 人均分
+    </div>`
+  : belowMin ? `
     <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
       <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 目前人數尚未滿4人需分攤
     </div>` : '';
@@ -968,10 +981,18 @@ async function toggleMySlot(dateStr, slotId) {
 function refreshAttendFeeTable(dateStr) {
   const members = getMemberNames();
   const attendeeCount = computeHourCount(currentDateData, members);
-  const fees = computeFees(currentDateData, attendeeCount, members);
+  const today = new Date(); today.setHours(0,0,0,0);
+  const satDate = new Date(dateStr + 'T00:00:00');
+  const wedBefore = new Date(satDate); wedBefore.setDate(satDate.getDate() - 3);
+  const forceAllSplit = attendeeCount === 0 && today >= wedBefore;
+  const fees = forceAllSplit ? computeFeesForceAll(members) : computeFees(currentDateData, attendeeCount, members);
   const belowMin = attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
 
-  const warnHtml = belowMin ? `
+  const warnHtml = forceAllSplit ? `
+    <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
+      <strong>[!] 本週六尚無人報名（已過週三）</strong> - 場地費用由全體 ${members.length} 人均分
+    </div>`
+  : belowMin ? `
     <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
       <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${attendeeCount} 人）</strong> - 目前人數尚未滿4人需分攤
     </div>` : '';
@@ -1467,6 +1488,19 @@ async function loadLog() {
 // ===========================================================
 // FEE CALCULATION
 // ===========================================================
+function computeFeesForceAll(members) {
+  // 週三後無人報名，強制全員均分
+  const perPerson = Math.ceil(RATE / members.length);
+  return members.map(member => ({
+    member,
+    slotId: null,
+    fee: perPerson,
+    breakdown: `${RATE} / ${members.length}人(全員均分) = ${perPerson}元`,
+    belowMin: false,
+    forceAll: true
+  }));
+}
+
 function computeHourCount(data, members) {
   let count = 0;
   for (const [m, slotId] of Object.entries(data)) {
