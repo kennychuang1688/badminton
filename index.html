@@ -427,7 +427,7 @@ const RATE = 1200; // 每場費用（2小時，600元/小時）
 const MIN_PLAYERS = 4; // 未滿此人數時全體均分
 
 // 最早可報名日期：2025/7/4 起每週六
-const SCHEDULE_START = '2025-07-04';
+const SCHEDULE_START = '2026-07-04';
 
 // ===========================================================
 // STATE
@@ -857,7 +857,6 @@ function renderAttendance(dateStr) {
 
   const slotSelectorHtml = isGuest ? `<div class="info-box">[覽] 遊客模式：僅能查看，無法修改出席。</div>`
     : selfLocked ? `
-    <div style="margin-bottom:12px;font-size:14px;font-weight:500;">選擇您的時段（${currentUser}）：</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;" id="my-slots">
       ${TIME_SLOTS.map(s => `
         <div class="slot-check ${mySlot === s.id ? 'checked' : ''} locked" id="myslot_${s.id}">
@@ -869,7 +868,6 @@ function renderAttendance(dateStr) {
     </div>
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:16px;">⛔ 此場次已超過修改期限（僅管理員可編輯）</div>`
     : `
-    <div style="margin-bottom:12px;font-size:14px;font-weight:500;">選擇您的時段（${currentUser}）：</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;" id="my-slots">
       ${TIME_SLOTS.map(s => `
         <div class="slot-check ${mySlot === s.id ? 'checked' : ''}" id="myslot_${s.id}" onclick="toggleMySlot('${dateStr}','${s.id}')">
@@ -1279,15 +1277,36 @@ async function loadMembersTab() {
   const todayStr = fmt(new Date());
 
   // 計算每位成員在「今天以前（含今天）所有場次」的累計費用
+  // 以每週六為單位，從 SCHEDULE_START 開始逐週掃描
   const sessionDeductions = {};
   members.forEach(n => sessionDeductions[n] = 0);
 
-  const pastDates = getHistoryDates().filter(d => d <= todayStr);
-  for (const d of pastDates) {
+  // 產生從 SCHEDULE_START 到今天所有的週六
+  const allSaturdays = [];
+  const startDate = new Date(SCHEDULE_START + 'T00:00:00');
+  const todayDate = new Date(todayStr + 'T00:00:00');
+  let cur = new Date(startDate);
+  while (cur <= todayDate) {
+    allSaturdays.push(fmt(cur));
+    cur.setDate(cur.getDate() + 7);
+  }
+
+  for (const d of allSaturdays) {
+    const satDate = new Date(d + 'T00:00:00');
+    const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5);
     const data = getAttendDoc(d);
     const hc = computeHourCount(data, members);
-    if (hc === 0) continue; // 無人出席，不收費
-    const fees = computeFees(data, hc, members);
+    // 週一後人數不足(含0人) → 強制全員均分
+    const todayD = new Date(todayStr + 'T00:00:00');
+    const needsAllSplit = (hc === 0 || hc < MIN_PLAYERS) && todayD >= monBefore;
+    let fees;
+    if (needsAllSplit) {
+      fees = computeFeesForceAll(members, data);
+    } else if (hc > 0) {
+      fees = computeFees(data, hc, members);
+    } else {
+      continue; // 週一前無人報名，不收費
+    }
     fees.forEach(f => {
       if (f.fee > 0) sessionDeductions[f.member] = (sessionDeductions[f.member] || 0) + f.fee;
     });
