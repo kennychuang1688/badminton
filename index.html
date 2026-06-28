@@ -832,7 +832,12 @@ async function loadAttendance() {
 }
 
 function renderAttendance(dateStr) {
-  const members = getMemberNames();
+  // 只計算在此週六當天或之前已加入、且尚未離開的成員
+  const members = getMembersConfig().filter(m =>
+    m.role !== 'guest' && !m.inactive &&
+    (m.joinDate || SCHEDULE_START) <= dateStr &&
+    (!m.leaveDate || m.leaveDate > dateStr)
+  ).map(m => m.name);
   const el = document.getElementById('attend-content');
   const mySlot = currentDateData[currentUser];
   const attendeeCount = computeHourCount(currentDateData, members);
@@ -978,7 +983,11 @@ async function toggleMySlot(dateStr, slotId) {
 }
 
 function refreshAttendFeeTable(dateStr) {
-  const members = getMemberNames();
+  const members = getMembersConfig().filter(m =>
+    m.role !== 'guest' && !m.inactive &&
+    (m.joinDate || SCHEDULE_START) <= dateStr &&
+    (!m.leaveDate || m.leaveDate > dateStr)
+  ).map(m => m.name);
   const attendeeCount = computeHourCount(currentDateData, members);
   const today = new Date(); today.setHours(0,0,0,0);
   const satDate = new Date(dateStr + 'T00:00:00');
@@ -1432,7 +1441,10 @@ async function confirmAddMember() {
   const prepaid = parseInt(document.getElementById('modal-new-member-prepaid').value) || 0;
   if (!name) { showToast('請輸入姓名', 'error'); return; }
   const cfg = getMembersConfig();
-  if (cfg.find(m => m.name === name)) { showToast('此姓名已存在', 'error'); return; }
+  if (cfg.find(m => m.name === name && !m.inactive)) { showToast('此姓名已存在', 'error'); return; }
+  // 若曾存在但已 inactive，先移除舊記錄再重新加入
+  const existingIdx = cfg.findIndex(m => m.name === name && m.inactive);
+  if (existingIdx >= 0) cfg.splice(existingIdx, 1);
   // Insert before the guest (user) entry to keep it last
   const guestIdx = cfg.findIndex(m => m.role === 'guest');
   const joinDate = fmt(new Date());
