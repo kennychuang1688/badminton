@@ -874,11 +874,10 @@ function renderAttendance(dateStr) {
     ? computeFeesForceAll(members, currentDateData)
     : computeFees(currentDateData, attendeeCount, members);
 
-  // Slot selector
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 2);
-  const cutoffStr = fmt(cutoff);
-  const selfLocked = dateStr <= cutoffStr;
+  // Slot selector：場次當天 23:59 前可修改
+  const now = new Date();
+  const sessionDeadline = new Date(dateStr + 'T23:59:59');
+  const selfLocked = now > sessionDeadline;
 
   const slotSelectorHtml = isGuest ? `<div class="info-box">[覽] 遊客模式：僅能查看，無法修改出席。</div>`
     : selfLocked ? `
