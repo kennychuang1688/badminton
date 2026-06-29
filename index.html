@@ -844,7 +844,6 @@ function renderAttendance(dateStr) {
   // 只計算在此週六當天或之前已加入、且尚未離開的成員（含 vip）
   const allActive = getMembersConfig().filter(m =>
     m.role !== 'guest' &&
-    !m.inactive &&
     (m.joinDate || SCHEDULE_START) <= dateStr &&
     (!m.leaveDate || m.leaveDate > dateStr)
   );
@@ -868,8 +867,8 @@ function renderAttendance(dateStr) {
   const urgentSplit = needsAllSplit && today >= friBefore;
 
   const fees = forceAllSplit
-    ? computeFeesForceAll(allActive, currentDateData)
-    : computeFees(currentDateData, attendeeCount, allActive);
+    ? computeFeesForceAll(members, currentDateData)
+    : computeFees(currentDateData, attendeeCount, members);
 
   // Slot selector
   const cutoff = new Date();
@@ -1000,7 +999,6 @@ async function toggleMySlot(dateStr, slotId) {
 function refreshAttendFeeTable(dateStr) {
   const allActive = getMembersConfig().filter(m =>
     m.role !== 'guest' &&
-    !m.inactive &&
     (m.joinDate || SCHEDULE_START) <= dateStr &&
     (!m.leaveDate || m.leaveDate > dateStr)
   );
@@ -1017,7 +1015,7 @@ function refreshAttendFeeTable(dateStr) {
   const needsAllSplit = (totalAttending === 0 || totalAttending < MIN_PLAYERS) && today >= monBefore;
   const forceAllSplit = needsAllSplit;
   const urgentSplit = needsAllSplit && today >= friBefore;
-  const fees = forceAllSplit ? computeFeesForceAll(allActive, currentDateData) : computeFees(currentDateData, attendeeCount, allActive);
+  const fees = forceAllSplit ? computeFeesForceAll(members, currentDateData) : computeFees(currentDateData, attendeeCount, members);
 
   const warnHtml = forceAllSplit ? `
     <div style="background:${urgentSplit ? '#fff3cd' : '#f5f5f5'};border-left:3px solid ${urgentSplit ? '#f0ad4e' : '#aaa'};border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:${urgentSplit ? '#7a5c00' : '#555'};">
@@ -1366,7 +1364,10 @@ async function loadMembersTab() {
   const inactiveWithDebt = allCfgForCalc.filter(m =>
     m.inactive && (sessionDeductions[m.name] || 0) > 0
   );
-  const displayList = [...cfg, ...inactiveWithDebt];
+  // 排序：admin → member → vip → inactive（確保單日貴賓列在專屬會員後面）
+  const roleOrder = { admin: 0, member: 1, vip: 2 };
+  const sortedCfg = [...cfg].sort((a, b) => (roleOrder[a.role] ?? 1) - (roleOrder[b.role] ?? 1));
+  const displayList = [...sortedCfg, ...inactiveWithDebt];
 
   document.getElementById('members-tbody').innerHTML = displayList.map(m => {
     const totalDeducted = sessionDeductions[m.name] || 0;
@@ -1582,13 +1583,19 @@ function getVipFeeForSlot(slotId) {
   return hours >= 2 ? VIP_RATE_2H : VIP_RATE_1H;
 }
 
-function computeFeesForceAll(allActiveObjs, data) {
+function computeFeesForceAll(members, data) {
   // 人數不足，強制全員均分（僅限 regular members，不含 VIP）
-  // allActiveObjs: array of member config objects (already filtered)
   data = data || currentDateData || {};
-  const members = allActiveObjs.map(m => m.name);
-  const regularMembers = allActiveObjs.filter(m => m.role !== 'vip').map(m => m.name);
-  const vipMembers = allActiveObjs.filter(m => m.role === 'vip').map(m => m.name);
+  // members 此時傳入的是 allCfg 篩選後的名單；需排除 vip
+  const cfg = getMembersConfig();
+  const regularMembers = members.filter(n => {
+    const m = cfg.find(x => x.name === n);
+    return m && m.role !== 'vip';
+  });
+  const vipMembers = members.filter(n => {
+    const m = cfg.find(x => x.name === n);
+    return m && m.role === 'vip';
+  });
   const perPerson = Math.ceil(RATE / regularMembers.length);
   const regularResult = regularMembers.map(member => ({
     member,
@@ -1603,7 +1610,7 @@ function computeFeesForceAll(allActiveObjs, data) {
     member,
     slotId: data[member] || null,
     fee: 0,
-    breakdown: data[member] ? '人數未滿4人，本次免費' : '未報名',
+    breakdown: data[member] ? '人數未滿4人，尚無法開團' : '未報名',
     belowMin: false,
     forceAll: false,
     isVip: true
@@ -1621,11 +1628,17 @@ function computeHourCount(data, members) {
 
 // 計算單場費用，支援單日貴賓
 // members = 全體有效成員名單（含 vip）
-function computeFees(data, attendeeCount, allActiveObjs) {
-  // allActiveObjs: array of member config objects (already filtered)
-  const members = allActiveObjs.map(m => m.name);
-  const regularMembers = allActiveObjs.filter(m => m.role !== 'vip').map(m => m.name);
-  const vipMembers = allActiveObjs.filter(m => m.role === 'vip').map(m => m.name);
+function computeFees(data, attendeeCount, members) {
+  const cfg = getMembersConfig();
+
+  const regularMembers = members.filter(n => {
+    const m = cfg.find(x => x.name === n);
+    return m && m.role !== 'vip';
+  });
+  const vipMembers = members.filter(n => {
+    const m = cfg.find(x => x.name === n);
+    return m && m.role === 'vip';
+  });
 
   // 出席的 vip 名單
   const attendingVips = vipMembers.filter(n => !!data[n]);
@@ -1654,7 +1667,7 @@ function computeFees(data, attendeeCount, allActiveObjs) {
       result.push({
         member, slotId,
         fee: 0,
-        breakdown: slotId ? '人數未滿4人，本次免費' : '未報名',
+        breakdown: slotId ? '人數未滿4人，尚無法開團' : '未報名',
         belowMin: false, forceAll: false, isVip: true
       });
     });
