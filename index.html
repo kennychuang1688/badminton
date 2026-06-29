@@ -239,7 +239,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>姓名</th><th>剩餘儲值金額</th><th>歷史記錄</th><th>會員身份</th><th id="members-op-th" style="display:none">操作</th></tr></thead>
+          <thead><tr><th>姓名</th><th>剩餘儲值金額</th><th>歷史記錄</th><th>會員方案</th><th id="members-op-th" style="display:none">操作</th></tr></thead>
           <tbody id="members-tbody"></tbody>
         </table>
       </div>
@@ -1345,7 +1345,7 @@ async function loadMembersTab() {
   document.getElementById('members-tbody').innerHTML = displayList.map(m => {
     const totalDeducted = sessionDeductions[m.name] || 0;
     const bal = (m.prepaid||0) - totalDeducted;
-    const ROLE_TITLES = { 'June': '財務', 'Frank': '公關', 'Kenny': '網管' };
+    const ROLE_TITLES = { 'June': '財務會員', 'Frank': '公關會員', 'Kenny': '網管會員' };
     const isInactive = !!m.inactive;
     const roleLabel = isInactive
       ? `<span class="badge badge-gray">已離開（${m.leaveDate||''}）</span>`
@@ -1353,7 +1353,7 @@ async function loadMembersTab() {
         ? `<span class="badge badge-green">${ROLE_TITLES[m.name] || '管理者'}</span>`
         : m.role === 'guest'
           ? '<span class="badge badge-gray">遊客</span>'
-          : '<span class="badge badge-green">會員</span>';
+          : '<span class="badge badge-green">專屬會員</span>';
     const editBtns = (isAdmin && !isInactive) ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
     const delBtn = (isAdmin && !isInactive) ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">- 移除會員帳號</button>` : '';
     const histBtn = `<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showMemberHistModal('${m.name}')">記錄</button>`;
