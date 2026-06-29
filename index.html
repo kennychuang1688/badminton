@@ -688,7 +688,11 @@ async function loadAllFromCloud() {
 // ===========================================================
 function initLogin() {
   const sel = document.getElementById('login-name');
-  getMembersConfig().filter(m => !m.inactive).forEach(m => {
+  const roleOrder = { admin: 0, member: 1, vip: 2, guest: 3 };
+  const sorted = getMembersConfig()
+    .filter(m => !m.inactive)
+    .sort((a, b) => (roleOrder[a.role] ?? 1) - (roleOrder[b.role] ?? 1));
+  sorted.forEach(m => {
     const o = document.createElement('option');
     const suffix = m.role === 'guest' ? ' [遊客]' : m.role === 'vip' ? ' [單日貴賓]' : '';
     o.value = m.name; o.textContent = m.name + suffix;
