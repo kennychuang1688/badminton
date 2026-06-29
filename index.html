@@ -1482,7 +1482,7 @@ async function confirmAddMember() {
   if (existingIdx >= 0) cfg.splice(existingIdx, 1);
   // Insert before the guest (user) entry to keep it last
   const guestIdx = cfg.findIndex(m => m.role === 'guest');
-  const joinDate = fmt(new Date());
+  const joinDate = SCHEDULE_START;
   if (guestIdx >= 0) {
     cfg.splice(guestIdx, 0, { name, role, prepaid, used: 0, joinDate });
   } else {
@@ -1589,8 +1589,12 @@ function computeFeesForceAll(members, data) {
     const m = cfg.find(x => x.name === n);
     return m && m.role !== 'vip';
   });
+  const vipMembers = members.filter(n => {
+    const m = cfg.find(x => x.name === n);
+    return m && m.role === 'vip';
+  });
   const perPerson = Math.ceil(RATE / regularMembers.length);
-  return regularMembers.map(member => ({
+  const regularResult = regularMembers.map(member => ({
     member,
     slotId: data[member] || null,
     fee: perPerson,
@@ -1599,6 +1603,16 @@ function computeFeesForceAll(members, data) {
     forceAll: true,
     isVip: false
   }));
+  const vipResult = vipMembers.map(member => ({
+    member,
+    slotId: data[member] || null,
+    fee: 0,
+    breakdown: data[member] ? '人數未滿4人，本次免費' : '未報名',
+    belowMin: false,
+    forceAll: false,
+    isVip: true
+  }));
+  return [...regularResult, ...vipResult];
 }
 
 function computeHourCount(data, members) {
