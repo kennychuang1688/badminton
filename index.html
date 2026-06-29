@@ -303,7 +303,8 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
     <div class="modal-field">
       <label>角色</label>
       <select id="modal-new-member-role">
-        <option value="member">一般成員</option>
+        <option value="member">一般成員（專屬會員）</option>
+        <option value="vip">單日貴賓</option>
         <option value="admin">管理者</option>
       </select>
     </div>
@@ -427,6 +428,8 @@ const TIME_SLOTS = [
   { id: 'B', label: '10:00 ~ 12:00', hours: [10, 11] },
 ];
 const RATE = 1100; // 每場費用（2小時，550元/小時）
+const VIP_RATE_1H = 600;  // 單日貴賓 1小時費用
+const VIP_RATE_2H = 1200; // 單日貴賓 2小時費用
 const MIN_PLAYERS = 4; // 未滿此人數時全體均分
 
 
@@ -570,6 +573,13 @@ async function saveMembersConfig(cfg) {
 function getMemberNames() {
   return getMembersConfig().filter(m => m.role !== 'guest' && !m.inactive).map(m => m.name);
 }
+function getRegularMemberNames() {
+  // admin + member（不含 vip、guest）
+  return getMembersConfig().filter(m => (m.role === 'admin' || m.role === 'member') && !m.inactive).map(m => m.name);
+}
+function getVipNames() {
+  return getMembersConfig().filter(m => m.role === 'vip' && !m.inactive).map(m => m.name);
+}
 function getAdminNames() {
   return getMembersConfig().filter(m => m.role === 'admin').map(m => m.name);
 }
@@ -681,7 +691,7 @@ function initLogin() {
   const sel = document.getElementById('login-name');
   getMembersConfig().filter(m => !m.inactive).forEach(m => {
     const o = document.createElement('option');
-    const suffix = m.role === 'guest' ? ' [遊客]' : '';
+    const suffix = m.role === 'guest' ? ' [遊客]' : m.role === 'vip' ? ' [單日貴賓]' : '';
     o.value = m.name; o.textContent = m.name + suffix;
     sel.appendChild(o);
   });
@@ -832,33 +842,36 @@ async function loadAttendance() {
 }
 
 function renderAttendance(dateStr) {
-  // 只計算在此週六當天或之前已加入、且尚未離開的成員
-  const members = getMembersConfig().filter(m =>
+  // 只計算在此週六當天或之前已加入、且尚未離開的成員（含 vip）
+  const allActive = getMembersConfig().filter(m =>
     m.role !== 'guest' &&
     (m.joinDate || SCHEDULE_START) <= dateStr &&
     (!m.leaveDate || m.leaveDate > dateStr)
-  ).map(m => m.name);
+  );
+  const members = allActive.map(m => m.name);
+  const regularMembers = allActive.filter(m => m.role !== 'vip').map(m => m.name);
   const el = document.getElementById('attend-content');
   const mySlot = currentDateData[currentUser];
   const attendeeCount = computeHourCount(currentDateData, members);
+  // 人數判斷：含 vip 出席者
+  const attendingVipCount = allActive.filter(m => m.role === 'vip' && !!currentDateData[m.name]).length;
+  const attendingRegularCount = allActive.filter(m => m.role !== 'vip' && !!currentDateData[m.name]).length;
+  const totalAttending = attendingVipCount + attendingRegularCount;
 
-  // 判斷強制全員均分的時機
-  // 條件：人數不足（0人 或 不滿4人），且今天已到週一(5天前)含以後
   const today = new Date(); today.setHours(0,0,0,0);
   const satDate = new Date(dateStr + 'T00:00:00');
-  const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5); // 週六前5天=週一
-  const friBefore = new Date(satDate); friBefore.setDate(satDate.getDate() - 1); // 週六前1天=週五
-  const needsAllSplit = (attendeeCount === 0 || (attendeeCount > 0 && attendeeCount < MIN_PLAYERS)) && today >= monBefore;
-  const forceAllSplit = needsAllSplit; // 週一起就均分
-  const urgentSplit = needsAllSplit && today >= friBefore; // 週五起加黃底
+  const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5);
+  const friBefore = new Date(satDate); friBefore.setDate(satDate.getDate() - 1);
+  // 強制均分：出席人數（含vip）不足4人，且已到週一
+  const needsAllSplit = (totalAttending === 0 || totalAttending < MIN_PLAYERS) && today >= monBefore;
+  const forceAllSplit = needsAllSplit;
+  const urgentSplit = needsAllSplit && today >= friBefore;
 
   const fees = forceAllSplit
     ? computeFeesForceAll(members, currentDateData)
     : computeFees(currentDateData, attendeeCount, members);
-  const belowMin = !forceAllSplit && attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
 
-  // Slot selector (not for guests)
-  // 鎖定規則：今天2天前（含）的場次，一般成員不能自行修改
+  // Slot selector
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 2);
   const cutoffStr = fmt(cutoff);
@@ -887,18 +900,21 @@ function renderAttendance(dateStr) {
       </div>
     </div>`;
 
-  // Below-min warning / force-all warning
   const warnHtml = forceAllSplit ? `
     <div style="background:${urgentSplit ? '#fff3cd' : '#f5f5f5'};border-left:3px solid ${urgentSplit ? '#f0ad4e' : '#aaa'};border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:${urgentSplit ? '#7a5c00' : '#555'};">
-      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${attendeeCount} 人）</strong> - 場地費用由全體 ${members.length} 人均分
+      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${totalAttending} 人）</strong> - 場地費用由全體 ${regularMembers.length} 位專屬會員均分，單日貴賓本次免費
     </div>` : '';
 
-  // Merged table: 成員 / 時段 / 費用明細 / 應付 / (管理者編輯)
+  const adminThHtml = isAdmin ? '<th></th>' : '';
+
   const tableRows = fees.map(f => {
     const isMe = f.member === currentUser;
     const forceRow = f.forceAll;
     const rowStyle = isMe ? 'background:var(--primary-light)' : (forceRow && urgentSplit ? 'background:#fff8e1' : '');
     const nameCell = isMe ? `<strong>> ${f.member}（你）</strong>` : f.member;
+    const typeBadge = f.isVip
+      ? '<span class="badge badge-amber" style="font-size:11px">單日貴賓</span>'
+      : '<span class="badge badge-green" style="font-size:11px">專屬會員</span>';
     const slotCell = f.slotId
       ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
       : (forceRow ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
@@ -910,14 +926,13 @@ function renderAttendance(dateStr) {
       : '';
     return `<tr style="${rowStyle}">
       <td>${nameCell}</td>
+      <td>${typeBadge}</td>
       <td>${slotCell}</td>
       <td style="font-size:12px;color:var(--text-muted)">${f.breakdown}</td>
       <td>${feeCell}</td>
       ${isAdmin ? `<td>${editBtn}</td>` : ''}
     </tr>`;
   }).join('');
-
-  const adminThHtml = isAdmin ? '<th></th>' : '';
 
   const myFee = fees.find(f => f.member === currentUser);
   const myFeeHtml = (!isGuest && myFee && myFee.fee > 0) ? `
@@ -943,7 +958,7 @@ function renderAttendance(dateStr) {
         ${warnHtml}
         <div class="table-wrap">
           <table>
-            <thead><tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th>${adminThHtml}</tr></thead>
+            <thead><tr><th>成員</th><th>身份</th><th>時段</th><th>費用明細</th><th>應付</th>${adminThHtml}</tr></thead>
             <tbody>${tableRows}</tbody>
           </table>
         </div>
@@ -983,32 +998,41 @@ async function toggleMySlot(dateStr, slotId) {
 }
 
 function refreshAttendFeeTable(dateStr) {
-  const members = getMembersConfig().filter(m =>
+  const allActive = getMembersConfig().filter(m =>
     m.role !== 'guest' &&
     (m.joinDate || SCHEDULE_START) <= dateStr &&
     (!m.leaveDate || m.leaveDate > dateStr)
-  ).map(m => m.name);
+  );
+  const members = allActive.map(m => m.name);
+  const regularMembers = allActive.filter(m => m.role !== 'vip').map(m => m.name);
   const attendeeCount = computeHourCount(currentDateData, members);
+  const attendingVipCount = allActive.filter(m => m.role === 'vip' && !!currentDateData[m.name]).length;
+  const attendingRegularCount = allActive.filter(m => m.role !== 'vip' && !!currentDateData[m.name]).length;
+  const totalAttending = attendingVipCount + attendingRegularCount;
   const today = new Date(); today.setHours(0,0,0,0);
   const satDate = new Date(dateStr + 'T00:00:00');
   const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5);
   const friBefore = new Date(satDate); friBefore.setDate(satDate.getDate() - 1);
-  const needsAllSplit = (attendeeCount === 0 || (attendeeCount > 0 && attendeeCount < MIN_PLAYERS)) && today >= monBefore;
+  const needsAllSplit = (totalAttending === 0 || totalAttending < MIN_PLAYERS) && today >= monBefore;
   const forceAllSplit = needsAllSplit;
   const urgentSplit = needsAllSplit && today >= friBefore;
   const fees = forceAllSplit ? computeFeesForceAll(members, currentDateData) : computeFees(currentDateData, attendeeCount, members);
-  const belowMin = !forceAllSplit && attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
 
   const warnHtml = forceAllSplit ? `
     <div style="background:${urgentSplit ? '#fff3cd' : '#f5f5f5'};border-left:3px solid ${urgentSplit ? '#f0ad4e' : '#aaa'};border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:${urgentSplit ? '#7a5c00' : '#555'};">
-      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${attendeeCount} 人）</strong> - 場地費用由全體 ${members.length} 人均分
+      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${totalAttending} 人）</strong> - 場地費用由全體 ${regularMembers.length} 位專屬會員均分，單日貴賓本次免費
     </div>` : '';
+
+  const adminThHtml = isAdmin ? '<th></th>' : '';
 
   const tableRows = fees.map(f => {
     const isMe = f.member === currentUser;
     const forceRow = f.forceAll;
     const rowStyle = isMe ? 'background:var(--primary-light)' : (forceRow && urgentSplit ? 'background:#fff8e1' : '');
     const nameCell = isMe ? `<strong>> ${f.member}（你）</strong>` : f.member;
+    const typeBadge = f.isVip
+      ? '<span class="badge badge-amber" style="font-size:11px">單日貴賓</span>'
+      : '<span class="badge badge-green" style="font-size:11px">專屬會員</span>';
     const slotCell = f.slotId
       ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
       : (forceRow ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
@@ -1019,14 +1043,12 @@ function refreshAttendFeeTable(dateStr) {
       ? `<button class="btn btn-admin btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showAdminSlotModal('${f.member}','${dateStr}')">編輯</button>`
       : '';
     return `<tr style="${rowStyle}">
-      <td>${nameCell}</td><td>${slotCell}</td>
+      <td>${nameCell}</td><td>${typeBadge}</td><td>${slotCell}</td>
       <td style="font-size:12px;color:var(--text-muted)">${f.breakdown}</td>
       <td>${feeCell}</td>
       ${isAdmin ? `<td>${editBtn}</td>` : ''}
     </tr>`;
   }).join('');
-
-  const adminThHtml = isAdmin ? '<th></th>' : '';
 
   const myFee = fees.find(f => f.member === currentUser);
   const myFeeHtml = (myFee && myFee.fee > 0) ? `
@@ -1046,7 +1068,7 @@ function refreshAttendFeeTable(dateStr) {
     container.innerHTML = warnHtml + `
       <div class="table-wrap">
         <table>
-          <thead><tr><th>成員</th><th>時段</th><th>費用明細</th><th>應付</th>${adminThHtml}</tr></thead>
+          <thead><tr><th>成員</th><th>身份</th><th>時段</th><th>費用明細</th><th>應付</th>${adminThHtml}</tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
       </div>
@@ -1312,15 +1334,18 @@ async function loadMembersTab() {
     const todayD = new Date(todayStr + 'T00:00:00');
 
     // 只計算在此週六當天或之前已加入、且尚未離開的會員（含已離開的歷史成員）
-    const activeMembers = allCfgForCalc.filter(m =>
+    const activeCfg = allCfgForCalc.filter(m =>
       (m.joinDate || SCHEDULE_START) <= d &&
       (!m.leaveDate || m.leaveDate > d)
-    ).map(m => m.name);
+    );
+    const activeMembers = activeCfg.map(m => m.name);
     if (activeMembers.length === 0) continue;
 
     const data = getAttendDoc(d);
     const hc = computeHourCount(data, activeMembers);
-    const needsAllSplit = (hc === 0 || hc < MIN_PLAYERS) && todayD >= monBefore;
+    // 人數不足判斷：含 vip 的總出席數
+    const totalAtt = activeCfg.filter(m => !!data[m.name]).length;
+    const needsAllSplit = (totalAtt === 0 || totalAtt < MIN_PLAYERS) && todayD >= monBefore;
     let fees;
     if (needsAllSplit) {
       fees = computeFeesForceAll(activeMembers, data);
@@ -1351,9 +1376,11 @@ async function loadMembersTab() {
       ? `<span class="badge badge-gray">已離開（${m.leaveDate||''}）</span>`
       : m.role === 'admin'
         ? `<span class="badge badge-green">${ROLE_TITLES[m.name] || '管理者'}</span>`
-        : m.role === 'guest'
-          ? '<span class="badge badge-gray">遊客</span>'
-          : '<span class="badge badge-green">專屬會員</span>';
+        : m.role === 'vip'
+          ? '<span class="badge badge-amber">單日貴賓</span>'
+          : m.role === 'guest'
+            ? '<span class="badge badge-gray">遊客</span>'
+            : '<span class="badge badge-green">專屬會員</span>';
     const editBtns = (isAdmin && !isInactive) ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
     const delBtn = (isAdmin && !isInactive) ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">- 移除會員帳號</button>` : '';
     const histBtn = `<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showMemberHistModal('${m.name}')">記錄</button>`;
@@ -1545,17 +1572,33 @@ async function loadLog() {
 // ===========================================================
 // FEE CALCULATION
 // ===========================================================
+
+// 取得某場次的 VIP 費用（依時段小時數）
+function getVipFeeForSlot(slotId) {
+  const slot = TIME_SLOTS.find(s => s.id === slotId);
+  if (!slot) return VIP_RATE_2H;
+  const hours = slot.hours ? slot.hours.length : 2;
+  return hours >= 2 ? VIP_RATE_2H : VIP_RATE_1H;
+}
+
 function computeFeesForceAll(members, data) {
-  // 人數不足，強制全員均分，但保留已報名者的時段標記
+  // 人數不足，強制全員均分（僅限 regular members，不含 VIP）
   data = data || currentDateData || {};
-  const perPerson = Math.ceil(RATE / members.length);
-  return members.map(member => ({
+  // members 此時傳入的是 allCfg 篩選後的名單；需排除 vip
+  const cfg = getMembersConfig();
+  const regularMembers = members.filter(n => {
+    const m = cfg.find(x => x.name === n);
+    return m && m.role !== 'vip';
+  });
+  const perPerson = Math.ceil(RATE / regularMembers.length);
+  return regularMembers.map(member => ({
     member,
     slotId: data[member] || null,
     fee: perPerson,
-    breakdown: `${RATE} / ${members.length}人(全員均分) = ${perPerson}元`,
+    breakdown: `${RATE} / ${regularMembers.length}人(全員均分) = ${perPerson}元`,
     belowMin: false,
-    forceAll: true
+    forceAll: true,
+    isVip: false
   }));
 }
 
@@ -1567,60 +1610,145 @@ function computeHourCount(data, members) {
   return count;
 }
 
+// 計算單場費用，支援單日貴賓
+// members = 全體有效成員名單（含 vip）
 function computeFees(data, attendeeCount, members) {
-  const belowMin = attendeeCount > 0 && attendeeCount < MIN_PLAYERS;
-  // If below min players, split across ALL members; otherwise split among attendees only
-  const divisor = (attendeeCount === 0 || belowMin) ? members.length : attendeeCount;
-  const perPerson = Math.ceil(RATE / divisor);
-  const note = belowMin
-    ? `人數不足${MIN_PLAYERS}人，暫由全體${members.length}人均分`
-    : '';
-  return members.map(member => {
-    const slotId = data[member];
-    if (!slotId) {
-      // Non-attendees also pay share when below min
-      const sharedFee = belowMin ? perPerson : 0;
-      const bd = belowMin ? `未到場但人數未滿${MIN_PLAYERS}人需分攤` : '未報名';
-      return { member, slotId: null, fee: sharedFee, breakdown: bd, belowMin };
-    }
-    return {
-      member, slotId, fee: perPerson,
-      breakdown: belowMin
-        ? `${RATE} / ${members.length}人(全體均分) = ${perPerson}元`
-        : `${RATE} / ${attendeeCount}人 = ${perPerson}元`,
-      belowMin, note
-    };
+  const cfg = getMembersConfig();
+
+  const regularMembers = members.filter(n => {
+    const m = cfg.find(x => x.name === n);
+    return m && m.role !== 'vip';
   });
+  const vipMembers = members.filter(n => {
+    const m = cfg.find(x => x.name === n);
+    return m && m.role === 'vip';
+  });
+
+  // 出席的 vip 名單
+  const attendingVips = vipMembers.filter(n => !!data[n]);
+  // 出席的 regular 名單
+  const attendingRegulars = regularMembers.filter(n => !!data[n]);
+
+  const totalAttendees = attendingVips.length + attendingRegulars.length;
+  const belowMin = totalAttendees > 0 && totalAttendees < MIN_PLAYERS;
+
+  // 人數不足時：regular 全員均分，vip 不參與
+  if (belowMin) {
+    const perRegular = Math.ceil(RATE / regularMembers.length);
+    const result = [];
+    regularMembers.forEach(member => {
+      const slotId = data[member] || null;
+      result.push({
+        member, slotId,
+        fee: perRegular,
+        breakdown: `${RATE} / ${regularMembers.length}人(人數不足全員均分) = ${perRegular}元`,
+        belowMin: true, forceAll: false, isVip: false
+      });
+    });
+    // VIP 出席但不付費（人數不足時不加入分攤）
+    vipMembers.forEach(member => {
+      const slotId = data[member] || null;
+      result.push({
+        member, slotId,
+        fee: 0,
+        breakdown: slotId ? '人數未滿4人，本次免費' : '未報名',
+        belowMin: false, forceAll: false, isVip: true
+      });
+    });
+    return result;
+  }
+
+  // 人數足夠（≥ 4人）
+  const result = [];
+
+  if (totalAttendees === 0) {
+    // 沒人出席
+    regularMembers.forEach(member => {
+      result.push({ member, slotId: null, fee: 0, breakdown: '未報名', belowMin: false, forceAll: false, isVip: false });
+    });
+    vipMembers.forEach(member => {
+      result.push({ member, slotId: null, fee: 0, breakdown: '未報名', belowMin: false, forceAll: false, isVip: true });
+    });
+    return result;
+  }
+
+  // 計算 VIP 各自的費用（固定費率），再從 RATE 中扣除
+  let totalVipContribution = 0;
+  const vipFees = {};
+  attendingVips.forEach(name => {
+    const slotId = data[name];
+    const vipFee = Math.ceil(getVipFeeForSlot(slotId) / totalAttendees);
+    vipFees[name] = vipFee;
+    totalVipContribution += vipFee;
+  });
+
+  // Regular 分攤剩餘費用（僅出席者）
+  const remainingForRegular = RATE - totalVipContribution * attendingVips.length;
+  // 注意：totalVipContribution 是所有VIP已貢獻的總和（每人 vipFee * VIP人數）
+  // 重新算：VIP 總貢獻 = sum of each vip's perPerson fee * VIP人數？
+  // 實際上依題意：VIP每人費用 = vipRateForSlot / totalAttendees（無條件進位）
+  // Regular每人費用 = (RATE - VIP總貢獻) / regularAttendees（無條件進位）
+  // VIP總貢獻 = vipFeePerPerson * attendingVips.length
+
+  const vipFeePerPerson = attendingVips.length > 0
+    ? Math.ceil(getVipFeeForSlot(data[attendingVips[0]]) / totalAttendees)
+    : 0;
+  const totalVipTotal = vipFeePerPerson * attendingVips.length;
+  const regularRemainder = RATE - totalVipTotal;
+  const regularFeePerPerson = attendingRegulars.length > 0
+    ? Math.ceil(regularRemainder / attendingRegulars.length)
+    : 0;
+
+  regularMembers.forEach(member => {
+    const slotId = data[member] || null;
+    if (!slotId) {
+      result.push({ member, slotId: null, fee: 0, breakdown: '未報名', belowMin: false, forceAll: false, isVip: false });
+    } else {
+      const bd = attendingVips.length > 0
+        ? `(${RATE} - ${vipFeePerPerson}×${attendingVips.length}貴賓) / ${attendingRegulars.length}人 = ${regularFeePerPerson}元`
+        : `${RATE} / ${attendingRegulars.length}人 = ${regularFeePerPerson}元`;
+      result.push({ member, slotId, fee: regularFeePerPerson, breakdown: bd, belowMin: false, forceAll: false, isVip: false });
+    }
+  });
+
+  vipMembers.forEach(member => {
+    const slotId = data[member] || null;
+    if (!slotId) {
+      result.push({ member, slotId: null, fee: 0, breakdown: '未報名', belowMin: false, forceAll: false, isVip: true });
+    } else {
+      const vipRate = getVipFeeForSlot(slotId);
+      const bd = `${vipRate}(貴賓費) / ${totalAttendees}人 = ${vipFeePerPerson}元`;
+      result.push({ member, slotId, fee: vipFeePerPerson, breakdown: bd, belowMin: false, forceAll: false, isVip: true });
+    }
+  });
+
+  return result;
 }
 
 function renderFeeTable(attendeeCount, fees) {
   const cnt = attendeeCount > 0 ? attendeeCount : 0;
-  const belowMin = cnt > 0 && cnt < MIN_PLAYERS;
+  const belowMin = fees.some(f => f.belowMin);
   const totalFee = fees.reduce((s, f) => s + f.fee, 0);
 
   const warningHtml = belowMin ? `
     <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
       <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${cnt} 人）</strong><br>
-      費用暫由全體 ${fees.length} 人均分。待人數滿 ${MIN_PLAYERS} 人後，將僅由出席者分攤。
+      費用由全體專屬會員均分，單日貴賓本次免費。
     </div>` : '';
-
-  // When below min, show all members; otherwise only show attendees + summary
-  const rows = belowMin
-    ? fees
-    : fees;
 
   return `
     ${warningHtml}
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">
       本場出席人數：<strong>${cnt}</strong> 人
-      ${cnt > 0 ? `，每人費用：<strong>${fees.find(f=>f.slotId)?.fee ?? '-'}</strong> 元` : ''}
+      ${cnt > 0 ? `，專屬會員費：<strong>${fees.find(f=>f.slotId && !f.isVip)?.fee ?? '-'}</strong> 元` : ''}
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>姓名</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
+        <thead><tr><th>姓名</th><th>身份</th><th>時段</th><th>費用明細</th><th>應付</th></tr></thead>
         <tbody>
-          ${rows.map(f=>`<tr style="${f.belowMin && !f.slotId ? 'background:#fff8e1' : f.slotId ? '' : ''}">
+          ${fees.map(f=>`<tr style="${f.belowMin && !f.slotId ? 'background:#fff8e1' : ''}">
             <td>${f.member}</td>
+            <td>${f.isVip ? '<span class="badge badge-amber">單日貴賓</span>' : '<span class="badge badge-green">專屬會員</span>'}</td>
             <td>${f.slotId
               ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
               : (f.belowMin
@@ -1768,15 +1896,17 @@ async function showMemberHistModal(name) {
 
     const satDate = new Date(d + 'T00:00:00');
     const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5);
-    const activeMembers = allCfgHist.filter(m =>
+    const activeCfgHist = allCfgHist.filter(m =>
       (m.joinDate || SCHEDULE_START) <= d &&
       (!m.leaveDate || m.leaveDate > d)
-    ).map(m => m.name);
+    );
+    const activeMembers = activeCfgHist.map(m => m.name);
     if (activeMembers.length === 0) return;
 
     const data = getAttendDoc(d);
     const hc = computeHourCount(data, activeMembers);
-    const needsAllSplit = (hc === 0 || hc < MIN_PLAYERS) && todayH >= monBefore;
+    const totalAtt = activeCfgHist.filter(m => !!data[m.name]).length;
+    const needsAllSplit = (totalAtt === 0 || totalAtt < MIN_PLAYERS) && todayH >= monBefore;
     let fees;
     if (needsAllSplit) {
       fees = computeFeesForceAll(activeMembers, data);
