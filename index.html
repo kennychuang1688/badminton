@@ -1234,12 +1234,47 @@ function getTotalPrepaid() {
 function getTotalCourtFees() {
   return getFundLog().filter(e => e.type === 'court').reduce((s, e) => s + e.amount, 0);
 }
-// Compute total per-session deductions (sum of all session fees paid by members)
-function getTotalSessionDeductions() {
-  return getFundLog().filter(e => e.type === 'session').reduce((s, e) => s + e.amount, 0);
+// 自動計算：從 SCHEDULE_START 到今天，所有已發生場次的「實際應收費用」明細
+function getSessionIncomeList() {
+  const cfgAll = getMembersConfig().filter(m => m.role !== 'guest');
+  const todayStr = fmt(new Date());
+  const todayDate = new Date(todayStr + 'T00:00:00');
+  const startDate = new Date(SCHEDULE_START + 'T00:00:00');
+  const list = [];
+  let cur = new Date(startDate);
+  while (cur <= todayDate) {
+    const d = fmt(cur);
+    cur.setDate(cur.getDate() + 7);
+    const activeMembers = cfgAll.filter(m =>
+      (m.joinDate || SCHEDULE_START) <= d &&
+      (!m.leaveDate || m.leaveDate > d)
+    ).map(m => m.name);
+    if (activeMembers.length === 0) continue;
+    const data = getAttendDoc(d);
+    const hc = computeHourCount(data, activeMembers);
+    const totalAtt = activeMembers.filter(name => !!data[name]).length;
+    const satDate = new Date(d + 'T00:00:00');
+    const monBefore = new Date(satDate); monBefore.setDate(satDate.getDate() - 5);
+    const needsAllSplit = (totalAtt === 0 || totalAtt < MIN_PLAYERS) && todayDate >= monBefore;
+    let fees;
+    if (needsAllSplit) {
+      fees = computeFeesForceAll(activeMembers, data);
+    } else if (hc > 0) {
+      fees = computeFees(data, hc, activeMembers);
+    } else {
+      continue;
+    }
+    const total = fees.reduce((s, f) => s + (f.fee || 0), 0);
+    if (total > 0) list.push({ date: d, amount: total });
+  }
+  return list;
+}
+// Compute total real income from all sessions so far (自動計算，無條件進位後的真實入帳金額)
+function getTotalSessionIncome() {
+  return getSessionIncomeList().reduce((s, e) => s + e.amount, 0);
 }
 function getPublicFundBalance() {
-  return getTotalPrepaid() - getTotalCourtFees() - getTotalSessionDeductions();
+  return getTotalSessionIncome() - getTotalCourtFees();
 }
 
 // ===========================================================
@@ -1261,29 +1296,24 @@ async function loadFeeOverview() {
   const total = fees.reduce((s, f) => s + f.fee, 0);
 
   // Public fund summary
-  const totalPrepaid = getTotalPrepaid();
   const totalCourt   = getTotalCourtFees();
-  const fundBal      = totalPrepaid - totalCourt;
+  const sessionIncomeList = getSessionIncomeList();
+  const totalSessionIncome = sessionIncomeList.reduce((s, e) => s + e.amount, 0);
+  const fundBal      = totalSessionIncome - totalCourt;
   const fundBalColor = fundBal >= 0 ? 'var(--primary)' : 'var(--danger)';
 
-  // Build timeline entries: combine member prepaid (as income) + court fees (as expense)
+  // Build timeline entries: combine auto-computed session income (as income) + court fees (as expense)
   // Each entry: { ts, type, label, amount, sign }
   const fundEntries = [];
-  // Member prepaid shown as income entries (use a synthetic early ts so they sort first)
-  // 用 mhist_ 取得每筆儲值的實際時間
-  getMembersConfig().filter(m => m.role !== 'guest').forEach(m => {
-    const hist = getMemberHistory(m.name);
-    hist.filter(e => e.type === 'add').forEach(e => {
-      fundEntries.push({ ts: e.ts, type: 'income', label: `${m.name} 儲值`, amount: e.amount, sign: 1 });
-    });
-    hist.filter(e => e.type === 'refund').forEach(e => {
-      fundEntries.push({ ts: e.ts, type: 'income', label: `${m.name} 退款`, amount: e.amount, sign: -1 });
-    });
+  // 自動計算的場次入帳（每場一筆，無條件進位後的實收總額，非手動紀錄不可刪除）
+  sessionIncomeList.forEach(e => {
+    fundEntries.push({ ts: e.date + 'T12:00:00', type: 'income', label: `[場次入帳] ${e.date}`, amount: e.amount, sign: 1 });
   });
   // Court fee entries from log - track original index for deletion
   getFundLog().forEach((e, i) => {
-    const lbl = e.type === 'court' ? '[繳球場費]' : '[場次扣款]';
-    fundEntries.push({ ts: e.ts, type: 'expense', label: `${lbl}${e.note ? ' '+e.note : ''}`, amount: e.amount, sign: -1, fundIdx: i });
+    if (e.type === 'court') {
+      fundEntries.push({ ts: e.ts, type: 'expense', label: `[繳球場費]${e.note ? ' '+e.note : ''}`, amount: e.amount, sign: -1, fundIdx: i });
+    }
   });
   // Sort oldest first (ascending)
   fundEntries.sort((a, b) => a.ts.localeCompare(b.ts));
@@ -1322,6 +1352,15 @@ async function loadFeeOverview() {
   document.getElementById('fee-overview-content').innerHTML = `
     <div class="card">
       <div class="card-title">[費用] 公費帳戶概覽</div>
+
+      <div class="stat-card" style="margin-bottom:16px;max-width:240px;">
+        <div class="stat-label">目前公費餘額</div>
+        <div class="stat-value" style="color:${fundBalColor}">${fundBal.toLocaleString()} 元</div>
+      </div>
+
+      <div class="info-box">
+        場次入帳金額為系統依出席資料自動計算（無條件進位後的實收總額），每場結束後即自動列入，無需手動結算。
+      </div>
 
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-muted)">收支記錄（由舊到新）</div>
       <div class="table-wrap">
