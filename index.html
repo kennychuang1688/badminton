@@ -303,8 +303,8 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
     <div class="modal-field">
       <label>角色</label>
       <select id="modal-new-member-role">
-        <option value="member">專屬會員</option>
-        <option value="vip">單日貴賓</option>
+        <option value="member">季租會員</option>
+        <option value="vip">日租會員</option>
       </select>
     </div>
     <div class="modal-field">
@@ -427,8 +427,8 @@ const TIME_SLOTS = [
   { id: 'B', label: '10:00 ~ 12:00', hours: [10, 11] },
 ];
 const RATE = 1100; // 每場費用（2小時，550元/小時）
-const VIP_RATE_1H = 600;  // 單日貴賓 1小時費用
-const VIP_RATE_2H = 1200; // 單日貴賓 2小時費用
+const VIP_RATE_1H = 600;  // 日租會員 1小時費用
+const VIP_RATE_2H = 1200; // 日租會員 2小時費用
 const MIN_PLAYERS = 4; // 未滿此人數時全體均分
 
 
@@ -694,7 +694,7 @@ function initLogin() {
     .sort((a, b) => (roleOrder[a.role] ?? 1) - (roleOrder[b.role] ?? 1));
   sorted.forEach(m => {
     const o = document.createElement('option');
-    const suffix = m.role === 'guest' ? ' [遊客]' : m.role === 'vip' ? ' [單日貴賓]' : '';
+    const suffix = m.role === 'guest' ? ' [遊客]' : m.role === 'vip' ? ' [日租會員]' : '';
     o.value = m.name; o.textContent = m.name + suffix;
     sel.appendChild(o);
   });
@@ -904,7 +904,7 @@ function renderAttendance(dateStr) {
 
   const warnHtml = forceAllSplit ? `
     <div style="background:${urgentSplit ? '#fff3cd' : '#f5f5f5'};border-left:3px solid ${urgentSplit ? '#f0ad4e' : '#aaa'};border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:${urgentSplit ? '#7a5c00' : '#555'};">
-      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${totalAttending} 人）</strong> - 場地費用由全體 ${regularMembers.length} 位專屬會員均分，單日貴賓本次免費
+      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${totalAttending} 人）</strong> - 場地費用由全體 ${regularMembers.length} 位季租會員均分，日租會員本次免費
     </div>` : '';
 
   const adminThHtml = isAdmin ? '<th></th>' : '';
@@ -915,8 +915,8 @@ function renderAttendance(dateStr) {
     const rowStyle = isMe ? 'background:var(--primary-light)' : (forceRow && urgentSplit ? 'background:#fff8e1' : '');
     const nameCell = isMe ? `<strong>> ${f.member}（你）</strong>` : f.member;
     const typeBadge = f.isVip
-      ? '<span class="badge badge-amber" style="font-size:11px">單日貴賓</span>'
-      : '<span class="badge badge-green" style="font-size:11px">專屬會員</span>';
+      ? '<span class="badge badge-amber" style="font-size:11px">日租會員</span>'
+      : '<span class="badge badge-green" style="font-size:11px">季租會員</span>';
     const slotCell = f.slotId
       ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
       : (forceRow ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
@@ -1022,7 +1022,7 @@ function refreshAttendFeeTable(dateStr) {
 
   const warnHtml = forceAllSplit ? `
     <div style="background:${urgentSplit ? '#fff3cd' : '#f5f5f5'};border-left:3px solid ${urgentSplit ? '#f0ad4e' : '#aaa'};border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:${urgentSplit ? '#7a5c00' : '#555'};">
-      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${totalAttending} 人）</strong> - 場地費用由全體 ${regularMembers.length} 位專屬會員均分，單日貴賓本次免費
+      <strong>[${urgentSplit ? '!' : 'i'}] 出席人數不足（目前 ${totalAttending} 人）</strong> - 場地費用由全體 ${regularMembers.length} 位季租會員均分，日租會員本次免費
     </div>` : '';
 
   const adminThHtml = isAdmin ? '<th></th>' : '';
@@ -1033,8 +1033,8 @@ function refreshAttendFeeTable(dateStr) {
     const rowStyle = isMe ? 'background:var(--primary-light)' : (forceRow && urgentSplit ? 'background:#fff8e1' : '');
     const nameCell = isMe ? `<strong>> ${f.member}（你）</strong>` : f.member;
     const typeBadge = f.isVip
-      ? '<span class="badge badge-amber" style="font-size:11px">單日貴賓</span>'
-      : '<span class="badge badge-green" style="font-size:11px">專屬會員</span>';
+      ? '<span class="badge badge-amber" style="font-size:11px">日租會員</span>'
+      : '<span class="badge badge-green" style="font-size:11px">季租會員</span>';
     const slotCell = f.slotId
       ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
       : (forceRow ? '<span class="badge badge-amber">未報名</span>' : '<span class="badge badge-gray">未報名</span>');
@@ -1367,7 +1367,7 @@ async function loadMembersTab() {
   const inactiveWithDebt = allCfgForCalc.filter(m =>
     m.inactive && (sessionDeductions[m.name] || 0) > 0
   );
-  // 排序：admin → member → vip → inactive（確保單日貴賓列在專屬會員後面）
+  // 排序：admin → member → vip → inactive（確保日租會員列在季租會員後面）
   const roleOrder = { admin: 0, member: 1, vip: 2 };
   const sortedCfg = [...cfg].sort((a, b) => (roleOrder[a.role] ?? 1) - (roleOrder[b.role] ?? 1));
   const displayList = [...sortedCfg, ...inactiveWithDebt];
@@ -1382,10 +1382,10 @@ async function loadMembersTab() {
       : m.role === 'admin'
         ? `<span class="badge badge-green">${ROLE_TITLES[m.name] || '管理者'}</span>`
         : m.role === 'vip'
-          ? '<span class="badge badge-amber">單日貴賓</span>'
+          ? '<span class="badge badge-amber">日租會員</span>'
           : m.role === 'guest'
             ? '<span class="badge badge-gray">遊客</span>'
-            : '<span class="badge badge-green">專屬會員</span>';
+            : '<span class="badge badge-green">季租會員</span>';
     const editBtns = (isAdmin && !isInactive) ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
     const canSwitchRole = isAdmin && !isInactive && (m.role === 'member' || m.role === 'vip');
     const switchBtn = canSwitchRole ? `<button class="btn btn-secondary btn-sm" onclick="toggleMemberRole('${m.name}')">變更會員方案</button>` : '';
@@ -1479,8 +1479,8 @@ async function toggleMemberRole(name) {
   if (!m || (m.role !== 'member' && m.role !== 'vip')) return;
   const oldRole = m.role;
   const newRole = oldRole === 'member' ? 'vip' : 'member';
-  const oldLabel = oldRole === 'member' ? '專屬會員' : '單日貴賓';
-  const newLabel = newRole === 'member' ? '專屬會員' : '單日貴賓';
+  const oldLabel = oldRole === 'member' ? '季租會員' : '日租會員';
+  const newLabel = newRole === 'member' ? '季租會員' : '日租會員';
   if (!confirm(`確定要將 ${name} 的方案由「${oldLabel}」變更為「${newLabel}」？`)) return;
   m.role = newRole;
   await saveMembersConfig(cfg);
@@ -1647,7 +1647,7 @@ function computeHourCount(data, members) {
   return count;
 }
 
-// 計算單場費用，支援單日貴賓
+// 計算單場費用，支援日租會員
 // members = 全體有效成員名單（含 vip）
 function computeFees(data, attendeeCount, members) {
   const cfg = getMembersConfig();
@@ -1770,14 +1770,14 @@ function renderFeeTable(attendeeCount, fees) {
   const warningHtml = belowMin ? `
     <div style="background:#fff3cd;border-left:3px solid #f0ad4e;border-radius:0 8px 8px 0;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#7a5c00;">
       <strong>[!] 人數未滿 ${MIN_PLAYERS} 人（目前 ${cnt} 人）</strong><br>
-      費用由全體專屬會員均分，單日貴賓本次免費。
+      費用由全體季租會員均分，日租會員本次免費。
     </div>` : '';
 
   return `
     ${warningHtml}
     <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">
       本場出席人數：<strong>${cnt}</strong> 人
-      ${cnt > 0 ? `，專屬會員費：<strong>${fees.find(f=>f.slotId && !f.isVip)?.fee ?? '-'}</strong> 元` : ''}
+      ${cnt > 0 ? `，季租會員費：<strong>${fees.find(f=>f.slotId && !f.isVip)?.fee ?? '-'}</strong> 元` : ''}
     </div>
     <div class="table-wrap">
       <table>
@@ -1785,7 +1785,7 @@ function renderFeeTable(attendeeCount, fees) {
         <tbody>
           ${fees.map(f=>`<tr style="${f.belowMin && !f.slotId ? 'background:#fff8e1' : ''}">
             <td>${f.member}</td>
-            <td>${f.isVip ? '<span class="badge badge-amber">單日貴賓</span>' : '<span class="badge badge-green">專屬會員</span>'}</td>
+            <td>${f.isVip ? '<span class="badge badge-amber">日租會員</span>' : '<span class="badge badge-green">季租會員</span>'}</td>
             <td>${f.slotId
               ? `<span class="badge badge-green">${TIME_SLOTS.find(s=>s.id===f.slotId)?.label}</span>`
               : (f.belowMin
