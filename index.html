@@ -213,6 +213,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   <div class="tabs" id="main-tabs">
     <button class="tab active" onclick="switchTab('attend')">[報名]</button>
     <button class="tab" onclick="switchTab('fee')">[公費資訊]</button>
+    <button class="tab" onclick="switchTab('info')">[說明]</button>
     <!-- Additional tabs injected by JS -->
   </div>
 
@@ -224,6 +225,43 @@ hr { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
   <!-- Tab: Fee overview -->
   <div id="page-fee" class="page">
     <div id="fee-overview-content"><div class="loading">載入中...</div></div>
+  </div>
+
+  <!-- Tab: Info / Rules -->
+  <div id="page-info" class="page">
+    <div class="card">
+      <div class="card-title">[說明] 通用棄將羽球說明</div>
+
+      <div class="info-box">
+        目前會員分「季租會員」及「日租會員」兩種類型。
+      </div>
+
+      <h3 style="font-size:14px;margin-bottom:10px;">季租會員</h3>
+      <table style="margin-bottom:18px;">
+        <tbody>
+          <tr><td style="width:30px;color:var(--text-muted)">2.1</td><td>會員球場是利用季繳和沛傑租用（1100 元 / 2 小時）</td></tr>
+          <tr><td style="color:var(--text-muted)">2.2</td><td>初次加入會員需繳交會員費 1500 元</td></tr>
+          <tr><td style="color:var(--text-muted)">2.3</td><td>會員費用會抵消每次參賽的費用（當日費用由出席者均分）</td></tr>
+          <tr><td style="color:var(--text-muted)">2.4</td><td>若當日出席者未滿 4 人，則所有季租會員一同均分 1100 元</td></tr>
+          <tr><td style="color:var(--text-muted)">2.5</td><td>後續季租會員需確保儲值金額需大於 0</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size:14px;margin-bottom:10px;">日租會員</h3>
+      <table style="margin-bottom:18px;">
+        <tbody>
+          <tr><td style="width:30px;color:var(--text-muted)">3.1</td><td>日租會員是採用日繳費用，球場計算的費用是（1200 元 / 2 小時）</td></tr>
+          <tr><td style="color:var(--text-muted)">3.2</td><td>實際費用由出席者均分</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="font-size:14px;margin-bottom:10px;">費用試算範例</h3>
+      <div class="fee-breakdown">
+        <div class="fee-row"><span>假設當天出席人數為 7 人（季租會員 x5，日租會員 x2）：</span></div>
+        <div class="fee-row"><span>每個日租會員費用</span><span>1200 ÷ 7 = 172 元（無條件進位）</span></div>
+        <div class="fee-row"><span>每個季租會員費用</span><span>(1100 − 172 − 172) ÷ 5 = 152 元（無條件進位）</span></div>
+      </div>
+    </div>
   </div>
 
 
