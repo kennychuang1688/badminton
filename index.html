@@ -1387,6 +1387,8 @@ async function loadMembersTab() {
             ? '<span class="badge badge-gray">遊客</span>'
             : '<span class="badge badge-green">專屬會員</span>';
     const editBtns = (isAdmin && !isInactive) ? ` <button class="btn btn-admin btn-sm" onclick="showPrepaidModal('${m.name}')">儲值/退款</button>` : '';
+    const canSwitchRole = isAdmin && !isInactive && (m.role === 'member' || m.role === 'vip');
+    const switchBtn = canSwitchRole ? `<button class="btn btn-secondary btn-sm" onclick="toggleMemberRole('${m.name}')">變更會員方案</button>` : '';
     const delBtn = (isAdmin && !isInactive) ? `<button class="btn btn-danger btn-sm" onclick="showRemoveMemberModal('${m.name}')">- 移除會員帳號</button>` : '';
     const histBtn = `<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:11px;" onclick="showMemberHistModal('${m.name}')">記錄</button>`;
     const rowStyle = isInactive ? 'opacity:0.6;' : '';
@@ -1395,7 +1397,7 @@ async function loadMembersTab() {
       <td><strong style="color:${bal<=0?'var(--danger)':bal<500?'var(--accent)':'var(--primary)'}">${bal.toLocaleString()} 元</strong>${editBtns}</td>
       <td>${histBtn}</td>
       <td>${roleLabel}</td>
-      ${isAdmin ? `<td>${delBtn}</td>` : ''}
+      ${isAdmin ? `<td style="white-space:nowrap">${switchBtn} ${delBtn}</td>` : ''}
     </tr>`;
   }).join('');
 }
@@ -1468,6 +1470,22 @@ async function confirmUpdatePrepaid() {
   }
   await saveMembersConfig(cfg);
   closeModal('modal-prepaid');
+  loadMembersTab();
+}
+
+async function toggleMemberRole(name) {
+  const cfg = getMembersConfig();
+  const m = cfg.find(x => x.name === name);
+  if (!m || (m.role !== 'member' && m.role !== 'vip')) return;
+  const oldRole = m.role;
+  const newRole = oldRole === 'member' ? 'vip' : 'member';
+  const oldLabel = oldRole === 'member' ? '專屬會員' : '單日貴賓';
+  const newLabel = newRole === 'member' ? '專屬會員' : '單日貴賓';
+  if (!confirm(`確定要將 ${name} 的方案由「${oldLabel}」變更為「${newLabel}」？`)) return;
+  m.role = newRole;
+  await saveMembersConfig(cfg);
+  await addLog({ action: `${name} 變更會員方案`, detail: `${oldLabel} -> ${newLabel}` });
+  showToast(`${name} 已變更為${newLabel}`, 'success');
   loadMembersTab();
 }
 
