@@ -1226,7 +1226,7 @@ async function confirmDeleteAttendance() {
 // PUBLIC FUND (公費) STORAGE
 // ===========================================================
 
-// Compute total prepaid from all members
+// Compute total prepaid from all members (= 公費帳戶中，會員儲值累計總額)
 function getTotalPrepaid() {
   return getMembersConfig().filter(m => m.role !== 'guest' && !m.inactive).reduce((s, m) => s + (m.prepaid || 0), 0);
 }
@@ -1234,7 +1234,8 @@ function getTotalPrepaid() {
 function getTotalCourtFees() {
   return getFundLog().filter(e => e.type === 'court').reduce((s, e) => s + e.amount, 0);
 }
-// 自動計算：從 SCHEDULE_START 到今天，所有已發生場次的「實際應收費用」明細
+// 自動計算：從 SCHEDULE_START 到今天，所有已發生場次因「無條件進位」多收的零頭明細
+// 場地實際成本固定為 RATE（1100），出席者均分時因無條件進位會合計超過 RATE，差額即為公費的額外入帳
 function getSessionIncomeList() {
   const cfgAll = getMembersConfig().filter(m => m.role !== 'guest');
   const todayStr = fmt(new Date());
@@ -1265,16 +1266,17 @@ function getSessionIncomeList() {
       continue;
     }
     const total = fees.reduce((s, f) => s + (f.fee || 0), 0);
-    if (total > 0) list.push({ date: d, amount: total });
+    const surplus = Math.max(0, total - RATE); // 無條件進位多收的零頭，才是公費的額外入帳
+    if (surplus > 0) list.push({ date: d, amount: surplus, total });
   }
   return list;
 }
-// Compute total real income from all sessions so far (自動計算，無條件進位後的真實入帳金額)
+// Compute total real income from all sessions so far (自動計算，無條件進位後多收的零頭總和)
 function getTotalSessionIncome() {
   return getSessionIncomeList().reduce((s, e) => s + e.amount, 0);
 }
 function getPublicFundBalance() {
-  return getTotalSessionIncome() - getTotalCourtFees();
+  return getTotalPrepaid() + getTotalSessionIncome() - getTotalCourtFees();
 }
 
 // ===========================================================
@@ -1296,18 +1298,29 @@ async function loadFeeOverview() {
   const total = fees.reduce((s, f) => s + f.fee, 0);
 
   // Public fund summary
+  const totalPrepaid = getTotalPrepaid();
   const totalCourt   = getTotalCourtFees();
   const sessionIncomeList = getSessionIncomeList();
   const totalSessionIncome = sessionIncomeList.reduce((s, e) => s + e.amount, 0);
-  const fundBal      = totalSessionIncome - totalCourt;
+  const fundBal      = totalPrepaid + totalSessionIncome - totalCourt;
   const fundBalColor = fundBal >= 0 ? 'var(--primary)' : 'var(--danger)';
 
-  // Build timeline entries: combine auto-computed session income (as income) + court fees (as expense)
+  // Build timeline entries: combine member prepaid (as income) + auto-computed session surplus (as income) + court fees (as expense)
   // Each entry: { ts, type, label, amount, sign }
   const fundEntries = [];
-  // 自動計算的場次入帳（每場一筆，無條件進位後的實收總額，非手動紀錄不可刪除）
+  // 會員儲值/退款（真正匯入/匯出公費帳戶的金額）
+  getMembersConfig().filter(m => m.role !== 'guest').forEach(m => {
+    const hist = getMemberHistory(m.name);
+    hist.filter(e => e.type === 'add').forEach(e => {
+      fundEntries.push({ ts: e.ts, type: 'income', label: `${m.name} 儲值`, amount: e.amount, sign: 1 });
+    });
+    hist.filter(e => e.type === 'refund').forEach(e => {
+      fundEntries.push({ ts: e.ts, type: 'expense', label: `${m.name} 退款`, amount: e.amount, sign: -1 });
+    });
+  });
+  // 自動計算的場次入帳（每場一筆，因無條件進位多收的零頭，非手動紀錄不可刪除）
   sessionIncomeList.forEach(e => {
-    fundEntries.push({ ts: e.date + 'T12:00:00', type: 'income', label: `[場次入帳] ${e.date}`, amount: e.amount, sign: 1 });
+    fundEntries.push({ ts: e.date + 'T12:00:00', type: 'income', label: `[場次入帳] ${e.date}（${e.total}元均分多收）`, amount: e.amount, sign: 1 });
   });
   // Court fee entries from log - track original index for deletion
   getFundLog().forEach((e, i) => {
@@ -1330,8 +1343,8 @@ async function loadFeeOverview() {
         const typeBadge = e.sign > 0
           ? '<span class="badge badge-green">入帳</span>'
           : '<span class="badge badge-red">支出</span>';
-        // Only expense (court fee) entries can be deleted by admin; income entries cannot
-        const delBtn = (isAdmin && e.type === 'expense')
+        // 僅 fundLog 中的支出記錄（如球場費）可被管理員刪除；會員儲值/退款與場次零頭不可在此刪除
+        const delBtn = (isAdmin && e.fundIdx !== undefined)
           ? `<button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px;" onclick="deleteFundEntry(${e.fundIdx})">刪除</button>`
           : '';
         return `<tr>
@@ -1359,7 +1372,7 @@ async function loadFeeOverview() {
       </div>
 
       <div class="info-box">
-        場次入帳金額為系統依出席資料自動計算（無條件進位後的實收總額），每場結束後即自動列入，無需手動結算。
+        公費帳戶 = 會員儲值總額 + 場次因無條件進位多收的零頭 − 球場費支出。場次零頭由系統依出席資料自動計算列入，無需手動結算。
       </div>
 
       <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text-muted)">收支記錄（由舊到新）</div>
